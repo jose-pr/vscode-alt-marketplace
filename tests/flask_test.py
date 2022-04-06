@@ -2,6 +2,7 @@ import json
 from flask import Blueprint, Flask, request, Response
 from pathlib import Path
 import urllib.parse
+import requests
 
 
 from src import Gallery, IterExtensionSrc
@@ -14,6 +15,7 @@ app = Flask(__name__)
 
 
 gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
+proxy_bp = Blueprint("generic_proxy", "proxy")
 
 
 @app.route("/")
@@ -40,6 +42,17 @@ def extension_query():
     return Response(json.dumps(resp), 200)
 
 
+@proxy_bp.route("/<path:path>")
+def proxy(path: str):
+    uri = urllib.parse.unquote_plus(path)
+    resp = requests.get(uri, stream=True)
+    return Response(
+        resp.iter_content(chunk_size=10 * 1024),
+        content_type=resp.headers["Content-Type"],
+    )
+
+
+app.register_blueprint(proxy_bp, url_prefix="/proxy")
 app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
 app.after_request(allow_cors)
 

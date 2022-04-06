@@ -1,16 +1,20 @@
 import json
 from flask import Blueprint, Flask, request, Response
 from pathlib import Path
+import urllib.parse
+
 
 from src import Gallery, IterExtensionSrc
 from src.components import gallery
+from src.components.sources import ProxyExtensionSrc
 from src.utils.flask import allow_cors
 from src.utils.matching import simple_text_query
 
 app = Flask(__name__)
 
 
-gallery_bp = Blueprint('vscode-marketplace-gallery', 'gallery-api')
+gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
+
 
 @app.route("/")
 def index():
@@ -18,14 +22,23 @@ def index():
 
 
 list_gallery = Gallery(
-    IterExtensionSrc(json.loads(Path("examples/extensions.json").read_text()))
+    ProxyExtensionSrc(
+        IterExtensionSrc(json.loads(Path("examples/extensions.json").read_text())),
+        lambda uri, type, ext, ver: f"https://127.0.0.1/proxy/{urllib.parse.quote_plus(uri)}",
+    )
 )
+
 
 @gallery_bp.route("/extensionquery", methods=["POST", "GET"])
 def extension_query():
-    query = request.json if request.method == "POST" else  simple_text_query(request.args.get('search_text', type=str) or "")
+    query = (
+        request.json
+        if request.method == "POST"
+        else simple_text_query(request.args.get("search_text", type=str) or "")
+    )
     resp = list_gallery.extension_query(query)
     return Response(json.dumps(resp), 200)
+
 
 app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
 app.after_request(allow_cors)

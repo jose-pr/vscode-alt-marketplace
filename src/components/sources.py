@@ -1,4 +1,4 @@
-from typing import Generator, Iterable, List
+from typing import Callable, Generator, Iterable, List
 
 from .common import IExtensionSrc
 
@@ -107,3 +107,32 @@ class IterExtensionSrc(IExtensionSrc):
                 ],
             },
         ]
+
+class ProxyExtensionSrc(IExtensionSrc):
+    def __init__(self, src:IExtensionSrc, proxy_url:Callable[[str,str,GalleryExtension, GalleryExtensionVersion], str]) -> None:
+        super().__init__()
+        self.src = src
+        self.proxy_url = proxy_url
+
+    def generate_page(
+        self,
+        criteria: List[GalleryCriterium],
+        flags: GalleryFlags,
+        assetTypes: List[str],
+        page: int = 1,
+        pageSize: int = 10,
+        sortBy: SortBy = SortBy.NoneOrRelevance,
+        sortOrder: SortOrder = SortOrder.Default
+    ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
+        gen = self.src.generate_page(criteria, flags, assetTypes, page, pageSize, sortBy, sortOrder)
+        while True:
+            try:
+                ext:GalleryExtension = next(gen)
+                for ver in ext.get("versions", []):
+                    for uri in ["assetUri", "fallbackAssetUri"]:
+                        if uri in ver:
+                            ver[uri] = self.proxy_url(ver[uri], uri, ext, ver)
+                yield ext
+            except StopIteration as ex:
+                return ex.value
+

@@ -6,6 +6,8 @@ from ..models.gallery import (
     GalleryCriterium,
     GalleryExtension,
     GalleryFlags,
+    SortBy,
+    SortOrder,
 )
 
 
@@ -93,7 +95,9 @@ class ExtensionFilter:
 
             def matcher(ext: GalleryExtension):
 
-                if not criteria_matcher.filters or criteria_matcher.is_match(ext):
+                if not (
+                    criteria_matcher.and_filters or criteria_matcher.or_filters
+                ) or criteria_matcher.is_match(ext):
                     tags = [t for t in ext.get("tags", []) if not t.startswith("__")]
                     locs = [
                         ext["extensionName"],
@@ -140,3 +144,42 @@ class CriteriaMatcher:
             if f.matcher(ext):
                 return True
         return False
+
+
+def simple_text_query(
+    search_text: str,
+    page: int = 1,
+    pageSize: int = 50,
+    sortBy: SortBy = SortBy.NoneOrRelevance,
+    sortOrder: SortOrder = SortOrder.Default,
+    flags: GalleryFlags = GalleryFlags.IncludeStatistics
+    | GalleryFlags.IncludeAssetUri
+    | GalleryFlags.ExcludeNonValidated
+    | GalleryFlags.IncludeVersionProperties
+    | GalleryFlags.IncludeCategoryAndTags
+    | GalleryFlags.IncludeFiles
+    | GalleryFlags.IncludeVersions,
+):
+    return {
+        "filters": [
+            {
+                "criteria": [
+                    {
+                        "filterType": FilterType.Target,
+                        "value": "Microsoft.VisualStudio.Code",
+                    },
+                    {"filterType": FilterType.SearchText, "value": search_text},
+                    {
+                        "filterType": FilterType.ExcludeWithFlags,
+                        "value": GalleryFlags.Unpublished,
+                    },
+                ],
+                "pageNumber": page,
+                "pageSize": pageSize,
+                "sortBy": sortBy,
+                "sortOrder": sortOrder,
+            }
+        ],
+        "assetTypes": [],
+        "flags": flags,
+    }

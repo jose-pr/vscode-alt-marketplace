@@ -1,11 +1,16 @@
 import json
-from flask import Flask, request, Response
+from flask import Blueprint, Flask, request, Response
 from pathlib import Path
 
 from src import Gallery, IterExtensionSrc
+from src.components import gallery
+from src.utils.flask import allow_cors
+from src.utils.matching import simple_text_query
 
 app = Flask(__name__)
 
+
+gallery_bp = Blueprint('vscode-marketplace-gallery', 'gallery-api')
 
 @app.route("/")
 def index():
@@ -16,26 +21,14 @@ list_gallery = Gallery(
     IterExtensionSrc(json.loads(Path("examples/extensions.json").read_text()))
 )
 
-
-@app.route("/_apis/public/gallery/extensionquery", methods=["POST", "GET"])
+@gallery_bp.route("/extensionquery", methods=["POST", "GET"])
 def extension_query():
-    query = request.json
+    query = request.json if request.method == "POST" else  simple_text_query(request.args.get('search_text', type=str) or "")
     resp = list_gallery.extension_query(query)
     return Response(json.dumps(resp), 200)
 
-
-@app.after_request
-def after_request(response: Response):
-    origin = request.headers.get("Origin")
-    if origin:
-        response.headers.add("Access-Control-Allow-Origin", origin)
-    # if request.method == 'OPTIONS':
-    response.headers.add("Access-Control-Allow-Credentials", "true")
-    if request.access_control_request_headers:
-        response.access_control_allow_headers = request.access_control_request_headers
-    if request.access_control_request_method:
-        response.access_control_allow_methods = [request.access_control_request_method]
-    return response
+app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
+app.after_request(allow_cors)
 
 
 crt = Path("./private/marketplace.visualstudio.com.crt")
@@ -47,7 +40,7 @@ if not crt.exists() or not key.exists():
     crt_, key_ = generate_selfsigned_cert(
         "marketplace.visualstudio.com",
         ["vscode-gallery.local"],
-        ["127.0.0.2"],
+        ["127.0.0.1"],
         None,
     )
     Path("./private/marketplace.visualstudio.com.crt").write_bytes(crt_)
@@ -55,7 +48,7 @@ if not crt.exists() or not key.exists():
 
 
 app.run(
-    host="127.0.0.2",
+    host="127.0.0.1",
     port=443,
     ssl_context=(
         crt,

@@ -149,7 +149,7 @@ class FilterType(IntEnum):
     ExcludeWithFlags = 12
 
 
-class AssetType(Enum):
+class AssetType(str, Enum):
     Icon = "Microsoft.VisualStudio.Services.Icons.Default"
     Details = "Microsoft.VisualStudio.Services.Content.Details"
     Changelog = "Microsoft.VisualStudio.Services.Content.Changelog"
@@ -159,7 +159,7 @@ class AssetType(Enum):
     Repository = "Microsoft.VisualStudio.Services.Links.Source"
 
 
-class PropertyType(Enum):
+class PropertyType(str, Enum):
     Dependency = "Microsoft.VisualStudio.Code.ExtensionDependencies"
     ExtensionPack = "Microsoft.VisualStudio.Code.ExtensionPack"
     Engine = "Microsoft.VisualStudio.Code.Engine"
@@ -172,7 +172,7 @@ class GalleryCriterium(TypedDict):
     filterType: FilterType
     value: NotRequired[str]
 
-
+VSCODE_INSTALLATION_TARGET = "Microsoft.VisualStudio.Code"
 DefaultPageSize = 10
 
 # From request

@@ -2,6 +2,7 @@ import re
 from typing import Callable, List, Optional
 
 from ..models.gallery import (
+    VSCODE_INSTALLATION_TARGET,
     FilterType,
     GalleryCriterium,
     GalleryExtension,
@@ -73,7 +74,7 @@ class ExtensionFilter:
             value = self.value
 
             def matcher(ext: GalleryExtension):
-                return value == "Microsoft.VisualStudio.Code"
+                return value == VSCODE_INSTALLATION_TARGET
 
         elif type is FilterType.Featured:
 
@@ -167,7 +168,7 @@ def simple_query(
                 "criteria": [
                     {
                         "filterType": FilterType.Target,
-                        "value": "Microsoft.VisualStudio.Code",
+                        "value": VSCODE_INSTALLATION_TARGET,
                     },
                     {"filterType": FilterType.SearchText, "value": search},
                     {

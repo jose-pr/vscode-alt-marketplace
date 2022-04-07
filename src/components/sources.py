@@ -173,7 +173,7 @@ class LocalGallerySrc(IterExtensionSrc):
         self._load()
 
     def iter(self):
-        return self.exts.values()
+        return self._exts.values()
 
     def get_extension(
         self,
@@ -188,7 +188,7 @@ class LocalGallerySrc(IterExtensionSrc):
         assetTypes: List[str] = [],
     ):
         extuid = self.uid_map.get(extensionId.lower())
-        ext = self.exts[extuid] if extuid else self.exts.get(extensionId, None)
+        ext = self._exts[extuid] if extuid else self._exts.get(extensionId, None)
         if ext:
             ext = self._sanitize_extension(flags, assetTypes, ext)
         return ext
@@ -200,6 +200,11 @@ class LocalGallerySrc(IterExtensionSrc):
             if ver:
                 return self.get_asset(get_version_asset(ver, AssetType.VSIX), asset)
         return None, None
+
+    @staticmethod
+    def get_version_asset_uri(version: GalleryExtensionVersion, asset: AssetType):        
+        if get_version_asset(version, asset):
+            return version["assetUri"] + "/" + asset.value
 
     def get_asset(self, src: str, asset: "str|AssetType"):
         import zipfile
@@ -226,7 +231,7 @@ class LocalGallerySrc(IterExtensionSrc):
         ids = (
             json.loads(self._ids_cache.read_text()) if self._ids_cache.exists() else {}
         )
-        self.exts: Dict[str, GalleryExtension] = {}
+        self._exts: Dict[str, GalleryExtension] = {}
         self.assets: Dict[str, Dict[AssetType, str]] = {}
         self.uid_map = {}
 
@@ -256,8 +261,8 @@ class LocalGallerySrc(IterExtensionSrc):
                     }
 
                     ids[pub] = ext["publisher"]["publisherId"]
-                    if uid in self.exts:
-                        _ext = self.exts[uid]
+                    if uid in self._exts:
+                        _ext = self._exts[uid]
                         version = semver.Version.parse(ext["versions"][0]["version"])
                         latest = True
 
@@ -266,10 +271,10 @@ class LocalGallerySrc(IterExtensionSrc):
                             if _ver > version:
                                 latest = False
                         if latest:
-                            self.exts[uid] = ext
+                            self._exts[uid] = ext
                             ext["versions"] += _ext["versions"]
                     else:
-                        self.exts[uid] = ext
+                        self._exts[uid] = ext
                         self.uid_map[ext["extensionId"]] = uid
         self._ids_cache.write_text(json.dumps(ids))
 

@@ -9,6 +9,7 @@ from markdown import markdown
 from src import Gallery
 from src.components.sources import LocalGallerySrc
 from src.models.gallery import (
+    VSCODE_INSTALLATION_TARGET,
     AssetType,
     GalleryExtensionVersion,
     FilterType,
@@ -35,11 +36,11 @@ gallery = Gallery(
         proxy_url=lambda filepath, type, ext, ver: f"https://127.0.0.1/assets/{urllib.parse.quote_plus(filepath)}",
     )
 )
+src: LocalGallerySrc = gallery.exts_src
 
 
 @gallery_bp.route("/extensions/<extensionId>/<version>/assets/<asset>")
 def get_extension_asset(extensionId: str, version: str | None, asset: str):
-    src: LocalGallerySrc = gallery.exts_src
     data, name = src.get_extension_asset(extensionId, version=version, asset=asset)
     return return_asset(data, filename=name, disposition="attachment")
 
@@ -48,7 +49,6 @@ def get_extension_asset(extensionId: str, version: str | None, asset: str):
     "/publishers/<publisher>/vsextensions/<extension>/<version>/vspackage"
 )
 def get_publisher_extension(publisher: str, extension: str, version: str):
-    src: LocalGallerySrc = gallery.exts_src
     data, name = src.get_extension_asset(
         f"{publisher}.{extension}", version=version, asset=AssetType.VSIX
     )
@@ -69,14 +69,12 @@ def extension_query():
 @assets_bp.route("/<path:path>/<asset>")
 def get_asset(path: str, asset: str):
     vsix = urllib.parse.unquote_plus(path)
-    src: LocalGallerySrc = gallery.exts_src
     return return_asset(*src.get_asset(vsix, asset))
 
 
 @web_bp.route("/items")
 def items():
     itemName = request.args.get("itemName", type=str)
-    src: LocalGallerySrc = gallery.exts_src
     ext = src.get_extension(itemName)
 
     if not ext:
@@ -104,7 +102,7 @@ def landing():
     query = simple_query(
         request.args.get("search_text", type=str)
         or [
-            {"filterType": FilterType.Target, "value": "Microsoft.VisualStudio.Code"},
+            {"filterType": FilterType.Target, "value": VSCODE_INSTALLATION_TARGET},
             {
                 "filterType": FilterType.ExcludeWithFlags,
                 "value": GalleryFlags.ExcludeNonValidated,
@@ -126,11 +124,6 @@ app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
 app.register_blueprint(web_bp)
 
 
-def _get_asset_uri(version: GalleryExtensionVersion, asset: AssetType):
-    if get_version_asset(version, asset):
-        return version["assetUri"] + "/" + asset.value
-
-
-app.jinja_env.globals.update(get_asset_uri=_get_asset_uri, AssetType=AssetType)
+app.jinja_env.globals.update(get_asset_uri=src.get_version_asset_uri, AssetType=AssetType)
 
 debug_run(app)

@@ -107,15 +107,17 @@ def landing():
             {"filterType": FilterType.Target, "value": "Microsoft.VisualStudio.Code"},
             {
                 "filterType": FilterType.ExcludeWithFlags,
-                "value": GalleryFlags.IncludeAssetUri
-                | GalleryFlags.IncludeFiles
-                | GalleryFlags.IncludeLatestVersionOnly,
+                "value": GalleryFlags.ExcludeNonValidated,
             },
-        ]
+        ],
+        flags=GalleryFlags.IncludeAssetUri
+        | GalleryFlags.IncludeFiles
+        | GalleryFlags.IncludeLatestVersionOnly,
     )
     resp = gallery.extension_query(query)
     return render_template_string(
-        Path("examples\landing.jinja").read_text(), exts=resp["results"][0]["extensions"]
+        Path("examples\landing.jinja").read_text(),
+        exts=resp["results"][0]["extensions"],
     )
 
 

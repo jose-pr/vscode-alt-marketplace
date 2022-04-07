@@ -16,7 +16,8 @@ app = Flask(__name__)
 
 gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
 proxy_bp = Blueprint("generic_proxy", "proxy")
-
+#https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
+#https://marketplace.visualstudio.com/items?itemName=rust-lang.rust
 
 @app.route("/")
 def index():

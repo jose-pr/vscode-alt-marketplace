@@ -1,5 +1,7 @@
 from typing import Iterable, List
 
+from ..models.vsixmanifest import PackageManifest
+
 from . import epoch_from_iso
 from ..models import GalleryExtension, GalleryExtensionVersion, GalleryFlags, SortBy, SortOrder
 
@@ -78,3 +80,30 @@ def sort_extensions(exts:Iterable[GalleryExtension], sortOrder: SortOrder, sortB
         elif defAsc:
             exts = reversed(exts)
         return iter(exts)
+
+
+def gallery_ext_from_manifest(manifest:PackageManifest):
+    ext: GalleryExtension = {}
+    ext["categories"] = manifest["Metadata"]["Categories"].split(",")
+    ext["displayName"] = manifest["Metadata"]["DisplayName"]
+    ext["extensionName"] = manifest["Metadata"]["Identity"]["@Id"]
+    ext["flags"] = [f.lower() for f in manifest["Metadata"]["GalleryFlags"].split()]
+    ext["publisher"] = {}
+    ext["publisher"]["publisherName"] = manifest["Metadata"]["Identity"]["@Publisher"]
+    ext["shortDescription"] = manifest["Metadata"]["Description"]["#text"]
+    ext["tags"] = manifest["Metadata"]["Tags"].split(",")
+    ver: GalleryExtensionVersion = {}
+    ver["flags"] = ext["flags"]
+    ver["files"] = [
+        {"assetType": asset["@Type"], "source": asset["@Path"]}
+        for asset in manifest["Assets"]["Asset"]
+    ]
+    ver["properties"] = [
+        {"key": prop["@Id"], "value": prop["@Value"]}
+        for prop in manifest["Metadata"]["Properties"]["Property"]
+    ]
+    ver["targetPlatform"] = manifest["Installation"]["InstallationTarget"]["@Id"]
+    ver["version"] = manifest["Metadata"]["Identity"]["@Version"]
+    ext["versions"] = [ver]
+
+    return ext

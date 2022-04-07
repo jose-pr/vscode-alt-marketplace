@@ -5,6 +5,7 @@ from ..models.gallery import (
     FilterType,
     GalleryCriterium,
     GalleryExtension,
+    GalleryExtensionQuery,
     GalleryFlags,
     SortBy,
     SortOrder,
@@ -146,8 +147,8 @@ class CriteriaMatcher:
         return False
 
 
-def simple_text_query(
-    search_text: str,
+def simple_query(
+    search: str | List[GalleryCriterium],
     page: int = 1,
     pageSize: int = 50,
     sortBy: SortBy = SortBy.NoneOrRelevance,
@@ -159,7 +160,7 @@ def simple_text_query(
     | GalleryFlags.IncludeCategoryAndTags
     | GalleryFlags.IncludeFiles
     | GalleryFlags.IncludeVersions,
-):
+) -> GalleryExtensionQuery:
     return {
         "filters": [
             {
@@ -168,12 +169,14 @@ def simple_text_query(
                         "filterType": FilterType.Target,
                         "value": "Microsoft.VisualStudio.Code",
                     },
-                    {"filterType": FilterType.SearchText, "value": search_text},
+                    {"filterType": FilterType.SearchText, "value": search},
                     {
                         "filterType": FilterType.ExcludeWithFlags,
                         "value": GalleryFlags.Unpublished,
                     },
-                ],
+                ]
+                if isinstance(search, str)
+                else search,
                 "pageNumber": page,
                 "pageSize": pageSize,
                 "sortBy": sortBy,

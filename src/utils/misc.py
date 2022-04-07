@@ -1,6 +1,6 @@
 from typing import Callable, List, TypeVar
 from ..models.gallery import GalleryExtensionQueryResult, GalleryExtensionQueryResultMetadata
-
+from pathlib import Path
 
 def reduceResultMeta(meta: List[GalleryExtensionQueryResultMetadata]):
     result = {}
@@ -39,3 +39,12 @@ def diff_query_results(a: GalleryExtensionQueryResult, b: GalleryExtensionQueryR
     missingb = diff(a["extensions"], b["extensions"], key)
     missinga = diff(b["extensions"], a["extensions"], key)
     return missinga, missingb
+
+
+def iter_bytes_read(path:str, chunk_size:int = 1024):
+    with Path(path).open("rb") as file:
+        while True:
+            data = file.read(chunk_size)
+            if not data:
+                break
+            yield data

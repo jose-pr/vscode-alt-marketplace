@@ -1,5 +1,7 @@
 from typing import Iterable, List
 
+from ..models.gallery import AssetType
+
 from ..models.vsixmanifest import PackageManifest
 
 from . import epoch_from_iso
@@ -12,10 +14,25 @@ from ..models import (
 )
 
 
-def get_statistic(ext: GalleryExtension, name: str, default=None):
+def get_statistic(ext: GalleryExtension, name: str, default: float | None = None):
     return next(
-        [s["value"] for s in ext["statistics"] if s["statisticName"] == name], default
+        (s["value"] for s in ext["statistics"] if s["statisticName"] == name), default
     )
+
+
+def get_version_asset(
+    version: GalleryExtensionVersion, name: str|AssetType, default: str | None = None
+):
+    name = name if isinstance(name, str) else name.value
+    return next(
+        (s["source"] for s in version["files"] if name == s["assetType"]), default
+    )
+
+
+def get_version(
+    ext: GalleryExtension, version: str, default: GalleryExtensionVersion | None = None
+):
+    return next((s for s in ext["versions"] if s["version"] == version), default)
 
 
 def sanitize_extension(flags: GalleryFlags, assets: List[str], ext: GalleryExtension):

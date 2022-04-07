@@ -9,5 +9,5 @@ from .gallery import (
     SortOrder,
     GalleryExtensionVersion,
     FilterType,
-    GalleryExtensionQueryResult
+    GalleryExtensionQueryResult,
 )

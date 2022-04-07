@@ -2,6 +2,7 @@ from typing import Callable, Dict, Generator, Iterable, List
 from pathlib import Path
 
 from src.models.gallery import AssetType
+from src.utils.misc import iter_bytes_read
 
 from .common import IExtensionSrc
 
@@ -62,6 +63,9 @@ class IterExtensionSrc(IExtensionSrc):
         super().__init__()
         self._exts = exts
 
+    def iter(self):
+        return self._exts
+
     def _sanitize_extension(
         self, flags: GalleryFlags, assetTypes: List[str], ext: GalleryExtension
     ):
@@ -85,7 +89,7 @@ class IterExtensionSrc(IExtensionSrc):
         end = start + pageSize
         cats = {}
 
-        for ext in sort_extensions(self._exts, sortOrder, sortBy):
+        for ext in sort_extensions(self.iter(), sortOrder, sortBy):
             if (
                 GalleryFlags.ExcludeNonValidated in flags
                 and "validated" not in ext["flags"]
@@ -163,17 +167,27 @@ class LocalGallerySrc(IterExtensionSrc):
         self._ids_cache = Path(id_cache) if id_cache else self._path / "ids.json"
         self._load()
 
-    @property
-    def _exts(self):
+    def iter(self):
         return self.exts.values()
 
-    def _get_asset(self, path: str, asset: str):
+    def get_asset(self, src: str, asset: str):
         import zipfile, mimetypes
 
-        with zipfile.ZipFile(self._path / path, mode="r") as file:
-            p =  self.assets[path][asset]
-            return file.read(p), mimetypes.guess_type(p)[0]
+        vsix = self._path / src
+        if src in self.assets and vsix.exists():
+            path = self.assets[src].get(asset, None)
+            if AssetType(asset) == AssetType.VSIX:
+                return src, iter_bytes_read(vsix), "application/vsix"
+            elif path:
+                with zipfile.ZipFile(vsix, mode="r") as file:
+                    if path in file.namelist():
+                        return (
+                            Path(path).name,
+                            file.read(path),
+                            mimetypes.guess_type(path)[0],
+                        )
 
+        return None, None, None
 
     def _load(self):
         import json, zipfile, xmltodict, semver, uuid
@@ -185,6 +199,7 @@ class LocalGallerySrc(IterExtensionSrc):
         )
         self.exts: Dict[str, GalleryExtension] = {}
         self.assets: Dict[str, Dict[AssetType, str]] = {}
+        self.uid_map = {}
 
         for file in self._path.iterdir():
             if file.suffix == ".vsix":
@@ -226,6 +241,7 @@ class LocalGallerySrc(IterExtensionSrc):
                             ext["versions"] += _ext["versions"]
                     else:
                         self.exts[uid] = ext
+                        self.uid_map[ext["extensionId"]] = uid
         self._ids_cache.write_text(json.dumps(ids))
 
     def generate_page(

@@ -95,7 +95,7 @@ def items():
     )
 
     return render_template_string(
-        Path("examples\item.html").read_text(), tabs=tabs, ext=ext, ver=ver
+        Path("examples\item.jinja").read_text(), tabs=tabs, ext=ext, ver=ver
     )
 
 
@@ -115,7 +115,7 @@ def landing():
     )
     resp = gallery.extension_query(query)
     return render_template_string(
-        Path("examples\landing.html").read_text(), exts=resp["results"][0]["extensions"]
+        Path("examples\landing.jinja").read_text(), exts=resp["results"][0]["extensions"]
     )
 
 

@@ -19,7 +19,8 @@
     </div>
 </div>
 {% for ext in exts %}
-<div class="card mb-3" style="max-width: 18rem;">
+{% set uid = ext['publisher']['publisherName']+'.'+ext['extensionName'] %}
+<div class="card mb-3" style="max-width: 18rem;" onclick="location.href='/items?itemName={{ uid }}';">
     <div class="row g-0">
         <div class="col-md-4">
             <img src="{{ get_asset_uri(ext['versions'][0], AssetType.Icon) }}" class="img-fluid rounded-start">
@@ -29,7 +30,7 @@
                 <h5 class="card-title">{{ ext.displayName }}</h5>
                 <p class="card-text">{{ ext.shortDescription }}</p>
                 <p class="card-text"><a class="btn btn-success"
-                        href="vscode:extension/{{ ext['publisher']['publisherName']+'.'+ext['extensionName'] }}">Install</a>
+                        href="vscode:extension/{{ uid }}">Install</a>
                 </p>
             </div>
         </div>

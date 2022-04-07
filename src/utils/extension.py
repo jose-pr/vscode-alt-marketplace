@@ -87,9 +87,9 @@ def gallery_ext_from_manifest(manifest:PackageManifest):
     ext["categories"] = manifest["Metadata"]["Categories"].split(",")
     ext["displayName"] = manifest["Metadata"]["DisplayName"]
     ext["extensionName"] = manifest["Metadata"]["Identity"]["@Id"]
-    ext["flags"] = [f.lower() for f in manifest["Metadata"]["GalleryFlags"].split()]
+    ext["flags"] = manifest["Metadata"]["GalleryFlags"].lower()
     ext["publisher"] = {}
-    ext["publisher"]["publisherName"] = manifest["Metadata"]["Identity"]["@Publisher"]
+    ext["publisher"]["displayName"] = ext["publisher"]["publisherName"] = manifest["Metadata"]["Identity"]["@Publisher"]
     ext["shortDescription"] = manifest["Metadata"]["Description"]["#text"]
     ext["tags"] = manifest["Metadata"]["Tags"].split(",")
     ver: GalleryExtensionVersion = {}

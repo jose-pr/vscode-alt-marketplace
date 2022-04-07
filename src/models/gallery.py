@@ -1,5 +1,4 @@
 from enum import Enum, IntEnum, IntFlag
-from sys import flags
 from typing import Optional, TypedDict, List
 from typing_extensions import NotRequired
 
@@ -57,6 +56,9 @@ class GalleryExtensionPublisher(TypedDict):
     domain: NotRequired[Optional[str]]
     isDomainVerified: NotRequired[bool]
 
+class InstallationTarget(TypedDict):
+    target:str
+    targetVersion:str
 
 class GalleryExtension(TypedDict):
     extensionId: str
@@ -72,7 +74,7 @@ class GalleryExtension(TypedDict):
     lastUpdated: str
     categories: Optional[List[str]]
     flags: str
-
+    installationTargets: List[InstallationTarget]
 
 class GalleryExtensionQueryResultMetadataItem(TypedDict):
     name: str

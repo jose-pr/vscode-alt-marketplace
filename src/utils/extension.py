@@ -3,13 +3,20 @@ from typing import Iterable, List
 from ..models.vsixmanifest import PackageManifest
 
 from . import epoch_from_iso
-from ..models import GalleryExtension, GalleryExtensionVersion, GalleryFlags, SortBy, SortOrder
+from ..models import (
+    GalleryExtension,
+    GalleryExtensionVersion,
+    GalleryFlags,
+    SortBy,
+    SortOrder,
+)
 
 
 def get_statistic(ext: GalleryExtension, name: str, default=None):
     return next(
         [s["value"] for s in ext["statistics"] if s["statisticName"] == name], default
     )
+
 
 def sanitize_extension(flags: GalleryFlags, assets: List[str], ext: GalleryExtension):
     versions = []
@@ -46,52 +53,60 @@ def sanitize_extension(flags: GalleryFlags, assets: List[str], ext: GalleryExten
     return _ext
 
 
-def sort_extensions(exts:Iterable[GalleryExtension], sortOrder: SortOrder, sortBy: SortBy):
-        defAsc = SortOrder.Descending == sortOrder
-        defDsc = SortOrder.Ascending != sortOrder
-        if sortBy is SortBy.AverageRating:
-            exts = sorted(
-                exts, key=lambda e: get_statistic(e, "averagerating", 0), reverse=defDsc
-            )
-        elif sortBy is SortBy.InstallCount:
-            exts = sorted(
-                exts, key=lambda e: get_statistic(e, "install", 0), reverse=defDsc
-            )
-        elif sortBy is SortBy.WeightedRating:
-            exts = sorted(
-                exts,
-                key=lambda e: get_statistic(e, "weightedRating", 0),
-                reverse=defDsc,
-            )
-        elif sortBy is SortBy.Title:
-            exts = sorted(exts, key=lambda e: e["displayName"], reverse=defAsc)
-        elif sortBy is SortBy.PublisherName:
-            exts = sorted(
-                exts, key=lambda e: e["publisher"]["displayName"], reverse=defAsc
-            )
-        elif sortBy is SortBy.PublishedDate:
-            exts = sorted(
-                exts, key=lambda e: epoch_from_iso(e["publishedDate"]), reverse=defAsc
-            )
-        elif sortBy is SortBy.LastUpdatedDate:
-            exts = sorted(
-                exts, key=lambda e: epoch_from_iso(e["lastUpdated"]), reverse=defAsc
-            )
-        elif defAsc:
-            exts = reversed(exts)
-        return iter(exts)
+def sort_extensions(
+    exts: Iterable[GalleryExtension], sortOrder: SortOrder, sortBy: SortBy
+):
+    defAsc = SortOrder.Descending == sortOrder
+    defDsc = SortOrder.Ascending != sortOrder
+    if sortBy is SortBy.AverageRating:
+        exts = sorted(
+            exts, key=lambda e: get_statistic(e, "averagerating", 0), reverse=defDsc
+        )
+    elif sortBy is SortBy.InstallCount:
+        exts = sorted(
+            exts, key=lambda e: get_statistic(e, "install", 0), reverse=defDsc
+        )
+    elif sortBy is SortBy.WeightedRating:
+        exts = sorted(
+            exts,
+            key=lambda e: get_statistic(e, "weightedRating", 0),
+            reverse=defDsc,
+        )
+    elif sortBy is SortBy.Title:
+        exts = sorted(exts, key=lambda e: e["displayName"], reverse=defAsc)
+    elif sortBy is SortBy.PublisherName:
+        exts = sorted(exts, key=lambda e: e["publisher"]["displayName"], reverse=defAsc)
+    elif sortBy is SortBy.PublishedDate:
+        exts = sorted(
+            exts, key=lambda e: epoch_from_iso(e["publishedDate"]), reverse=defAsc
+        )
+    elif sortBy is SortBy.LastUpdatedDate:
+        exts = sorted(
+            exts, key=lambda e: epoch_from_iso(e["lastUpdated"]), reverse=defAsc
+        )
+    elif defAsc:
+        exts = reversed(exts)
+    return iter(exts)
 
 
-def gallery_ext_from_manifest(manifest:PackageManifest):
+def gallery_ext_from_manifest(manifest: PackageManifest):
     ext: GalleryExtension = {}
     ext["categories"] = manifest["Metadata"]["Categories"].split(",")
     ext["displayName"] = manifest["Metadata"]["DisplayName"]
     ext["extensionName"] = manifest["Metadata"]["Identity"]["@Id"]
     ext["flags"] = manifest["Metadata"]["GalleryFlags"].lower()
     ext["publisher"] = {}
-    ext["publisher"]["displayName"] = ext["publisher"]["publisherName"] = manifest["Metadata"]["Identity"]["@Publisher"]
+    ext["publisher"]["displayName"] = ext["publisher"]["publisherName"] = manifest[
+        "Metadata"
+    ]["Identity"]["@Publisher"]
     ext["shortDescription"] = manifest["Metadata"]["Description"]["#text"]
     ext["tags"] = manifest["Metadata"]["Tags"].split(",")
+    ext["installationTargets"] = [
+        {
+            "target": manifest["Installation"]["InstallationTarget"]["@Id"],
+            "targetVersion": "",
+        }
+    ]
     ver: GalleryExtensionVersion = {}
     ver["flags"] = ext["flags"]
     ver["files"] = [
@@ -102,7 +117,7 @@ def gallery_ext_from_manifest(manifest:PackageManifest):
         {"key": prop["@Id"], "value": prop["@Value"]}
         for prop in manifest["Metadata"]["Properties"]["Property"]
     ]
-    ver["targetPlatform"] = manifest["Installation"]["InstallationTarget"]["@Id"]
+    # ver["targetPlatform"] = manifest["Installation"]["InstallationTarget"]["@Id"]
     ver["version"] = manifest["Metadata"]["Identity"]["@Version"]
     ext["versions"] = [ver]
 

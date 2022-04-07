@@ -1,0 +1,63 @@
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+
+<div class="card">
+    <div class="row g-0">
+        <div class="col-md-4">
+            <img src="{{ get_asset_uri(ver, AssetType.Icon) }}" class="img-fluid rounded-start">
+        </div>
+        <div class="col-md-8">
+            <div class="card-body">
+                <h5 class="card-title">{{ ext.displayName }}</h5>
+                <p class="card-text">{{ ext.shortDescription }}</p>
+                <p class="card-text"><a class="btn btn-success"
+                        href="vscode:extension/{{ ext['publisher']['publisherName']+'.'+ext['extensionName'] }}">Install</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<ul class="nav nav-tabs" id="myTab" role="tablist">
+    {% for key, (title, text) in tabs.items() %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link {% if loop.index == 1 %} active {% endif %}" id="{{ key }}-tab" data-bs-toggle="tab"
+            data-bs-target="#{{ key }}" type="button" role="tab" aria-controls="home" aria-selected="true">{{ title
+            }}</button>
+    </li>
+    {% endfor %}
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="versions-tab" data-bs-toggle="tab" data-bs-target="#versions" type="button"
+            role="tab" aria-controls="home" aria-selected="true">Versions</button>
+    </li>
+</ul>
+<div class="tab-content" id="myTabContent">
+    {% for key, (title, text) in tabs.items() %}
+    <div class="tab-pane fade {% if loop.index == 1 %} show active {% endif %}" id="{{ key }}" role="tabpanel">{{
+        text|safe }}</div>
+    {% endfor %}
+    <div class="tab-pane fade" id="versions" role="tabpanel">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th scope="col">Version</th>
+                    <th scope="col">Last Updated</th>
+                    <th scope="col"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for version in ext["versions"] %}
+                <tr>
+                    <td>{{version["version"]}}</td>
+                    <td>{{version.get("lastUpdated","")}}</td>
+                    <td><a href="{{ get_asset_uri(version, AssetType.VSIX) }}">Download</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+    crossorigin="anonymous"></script>

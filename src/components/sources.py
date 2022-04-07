@@ -7,7 +7,12 @@ from src.utils.misc import iter_bytes_read
 from .common import IExtensionSrc
 
 from ..utils.matching import CriteriaMatcher
-from ..utils.extension import sanitize_extension, sort_extensions
+from ..utils.extension import (
+    get_version,
+    get_version_asset,
+    sanitize_extension,
+    sort_extensions,
+)
 
 from ..models import *
 
@@ -170,24 +175,48 @@ class LocalGallerySrc(IterExtensionSrc):
     def iter(self):
         return self.exts.values()
 
-    def get_asset(self, src: str, asset: str):
-        import zipfile, mimetypes
+    def get_extension(
+        self,
+        extensionId: str,
+        flags: GalleryFlags = GalleryFlags.IncludeAssetUri
+        | GalleryFlags.IncludeCategoryAndTags
+        | GalleryFlags.IncludeFiles
+        | GalleryFlags.IncludeInstallationTargets
+        | GalleryFlags.IncludeStatistics
+        | GalleryFlags.IncludeVersionProperties
+        | GalleryFlags.IncludeVersions,
+        assetTypes: List[str] = [],
+    ):
+        extuid = self.uid_map.get(extensionId.lower())
+        ext = self.exts[extuid] if extuid else self.exts.get(extensionId, None)
+        if ext:
+            ext = self._sanitize_extension(flags, assetTypes, ext)
+        return ext
+
+    def get_extension_asset(self, extensionId: str, version: str | None, asset: str):
+        ext = self.get_extension(extensionId)
+        if ext:
+            ver = get_version(ext, version)
+            if ver:
+                return self.get_asset(get_version_asset(ver, AssetType.VSIX), asset)
+        return None, None
+
+    def get_asset(self, src: str, asset: "str|AssetType"):
+        import zipfile
 
         vsix = self._path / src
         if src in self.assets and vsix.exists():
-            path = self.assets[src].get(asset, None)
+            path = self.assets[src].get(
+                asset if isinstance(asset, str) else asset.value, None
+            )
             if AssetType(asset) == AssetType.VSIX:
-                return src, iter_bytes_read(vsix), "application/vsix"
+                return iter_bytes_read(vsix), src
             elif path:
                 with zipfile.ZipFile(vsix, mode="r") as file:
                     if path in file.namelist():
-                        return (
-                            Path(path).name,
-                            file.read(path),
-                            mimetypes.guess_type(path)[0],
-                        )
+                        return file.read(path), Path(path).name
 
-        return None, None, None
+        return None, None
 
     def _load(self):
         import json, zipfile, xmltodict, semver, uuid
@@ -244,25 +273,11 @@ class LocalGallerySrc(IterExtensionSrc):
                         self.uid_map[ext["extensionId"]] = uid
         self._ids_cache.write_text(json.dumps(ids))
 
-    def generate_page(
-        self,
-        criteria: List[GalleryCriterium],
-        flags: GalleryFlags,
-        assetTypes: List[str],
-        page: int = 1,
-        pageSize: int = 10,
-        sortBy: SortBy = SortBy.NoneOrRelevance,
-        sortOrder: SortOrder = SortOrder.Default,
-    ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
-        gen = super().generate_page(
-            criteria, flags, assetTypes, page, pageSize, sortBy, sortOrder
-        )
-        while True:
-            try:
-                ext: GalleryExtension = next(gen)
-                for ver in ext.get("versions", []):
-                    for uri in ["assetUri", "fallbackAssetUri"]:
-                        ver[uri] = self._proxy_url(ver[uri], uri, ext, ver)
-                yield ext
-            except StopIteration as ex:
-                return ex.value
+    def _sanitize_extension(
+        self, flags: GalleryFlags, assetTypes: List[str], ext: GalleryExtension
+    ):
+        ext = super()._sanitize_extension(flags, assetTypes, ext)
+        for ver in ext.get("versions", []):
+            for uri in ["assetUri", "fallbackAssetUri"]:
+                ver[uri] = self._proxy_url(ver[uri], uri, ext, ver)
+        return ext

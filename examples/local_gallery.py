@@ -1,12 +1,21 @@
 import json
-from typing import Literal
-from flask import Blueprint, Flask, request, Response, abort
+from pathlib import Path
+from typing import Dict, Literal, OrderedDict
+from flask import Blueprint, Flask, render_template_string, request, Response, abort
 import urllib.parse
+
+from markdown import markdown
 
 from src import Gallery
 from src.components.sources import LocalGallerySrc
-from src.models.gallery import AssetType
+from src.models.gallery import (
+    AssetType,
+    GalleryExtensionVersion,
+    FilterType,
+    GalleryFlags,
+)
 from src.utils.extension import get_version_asset, get_version
+from src.utils.flask import render_asset, return_asset
 from src.utils.matching import simple_query
 from tests.common import debug_run
 
@@ -15,6 +24,7 @@ app = Flask(__name__)
 
 gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
 assets_bp = Blueprint("assets", "assets")
+web_bp = Blueprint("web", "web")
 # https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
 # https://marketplace.visualstudio.com/items?itemName=rust-lang.rust
 
@@ -28,17 +38,10 @@ gallery = Gallery(
 
 
 @gallery_bp.route("/extensions/<extensionId>/<version>/assets/<asset>")
-def get_extension_asset(extensionId: str, version: str, asset: str):
+def get_extension_asset(extensionId: str, version: str | None, asset: str):
     src: LocalGallerySrc = gallery.exts_src
-    extuid = src.uid_map.get(extensionId.lower(), None)
-    if extuid:
-        ext = src.exts[extuid]
-        ver = get_version(ext, version)
-        if ver:
-            return get_asset(
-                get_version_asset(ver, AssetType.VSIX), asset, "attachment"
-            )
-    abort(404)
+    data, name = src.get_extension_asset(extensionId, version=version, asset=asset)
+    return return_asset(data, filename=name, disposition="attachment")
 
 
 @gallery_bp.route(
@@ -46,12 +49,10 @@ def get_extension_asset(extensionId: str, version: str, asset: str):
 )
 def get_publisher_extension(publisher: str, extension: str, version: str):
     src: LocalGallerySrc = gallery.exts_src
-    ext = src.exts.get(f"{publisher}.{extension}".lower(), None)
-    if ext:
-        ver = get_version(ext, version)
-        if ver:
-            return get_asset(get_version_asset(ver, AssetType.VSIX), AssetType.VSIX)
-    abort(404)
+    data, name = src.get_extension_asset(
+        f"{publisher}.{extension}", version=version, asset=AssetType.VSIX
+    )
+    return return_asset(data, filename=name, disposition="attachment")
 
 
 @gallery_bp.route("/extensionquery", methods=["POST", "GET"])
@@ -66,25 +67,68 @@ def extension_query():
 
 
 @assets_bp.route("/<path:path>/<asset>")
-def get_asset(
-    path: str, asset: str, disposition: Literal["inline", "attachment"] = "inline"
-):
+def get_asset(path: str, asset: str):
     vsix = urllib.parse.unquote_plus(path)
     src: LocalGallerySrc = gallery.exts_src
-    filename, data, mime = src.get_asset(vsix, asset)
-    if filename:
-        return Response(
-            data,
-            mimetype=mime,
-            headers={
-                "Content-Disposition": f"{disposition}; filename={filename}; filename*=utf-8''{filename}"
-            },
-        )
-    else:
+    return return_asset(*src.get_asset(vsix, asset))
+
+
+@web_bp.route("/items")
+def items():
+    itemName = request.args.get("itemName", type=str)
+    src: LocalGallerySrc = gallery.exts_src
+    ext = src.get_extension(itemName)
+
+    if not ext:
         abort(404)
+    ver = get_version(ext, None)
+    if not ver:
+        abort(404)
+
+    vsix = get_version_asset(ver, AssetType.VSIX)
+    tabs: Dict[str, tuple[str, str]] = OrderedDict()
+    tabs[AssetType.Details.name] = "Overview", render_asset(
+        *src.get_asset(vsix, AssetType.Details)
+    )
+    tabs[AssetType.Changelog.name] = "Change Log", render_asset(
+        *src.get_asset(vsix, AssetType.Changelog)
+    )
+
+    return render_template_string(
+        Path("examples\item.html").read_text(), tabs=tabs, ext=ext, ver=ver
+    )
+
+
+@web_bp.route("/")
+def landing():
+    query = simple_query(
+        request.args.get("search_text", type=str)
+        or [
+            {"filterType": FilterType.Target, "value": "Microsoft.VisualStudio.Code"},
+            {
+                "filterType": FilterType.ExcludeWithFlags,
+                "value": GalleryFlags.IncludeAssetUri
+                | GalleryFlags.IncludeFiles
+                | GalleryFlags.IncludeLatestVersionOnly,
+            },
+        ]
+    )
+    resp = gallery.extension_query(query)
+    return render_template_string(
+        Path("examples\landing.html").read_text(), exts=resp["results"][0]["extensions"]
+    )
 
 
 app.register_blueprint(assets_bp, url_prefix="/assets")
 app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
+app.register_blueprint(web_bp)
+
+
+def _get_asset_uri(version: GalleryExtensionVersion, asset: AssetType):
+    if get_version_asset(version, asset):
+        return version["assetUri"] + "/" + asset.value
+
+
+app.jinja_env.globals.update(get_asset_uri=_get_asset_uri, AssetType=AssetType)
 
 debug_run(app)

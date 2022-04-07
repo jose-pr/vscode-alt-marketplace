@@ -32,7 +32,7 @@ def get_version_asset(
 def get_version(
     ext: GalleryExtension, version: str, default: GalleryExtensionVersion | None = None
 ):
-    return next((s for s in ext["versions"] if s["version"] == version), default)
+    return next((s for s in ext["versions"] if s["version"] == version or version is None), default)
 
 
 def sanitize_extension(flags: GalleryFlags, assets: List[str], ext: GalleryExtension):

@@ -1,6 +1,11 @@
-from typing import List
-from flask import Response, request
+import html
+from io import StringIO
+import mimetypes
+from typing import List, Literal
+from flask import Response, abort, request
 from pathlib import Path
+
+from markdown import markdown
 
 
 def allow_cors(response: Response):
@@ -27,3 +32,50 @@ def load_ssl_context(base_path: str, hostnames: List[str], ips: List[str]):
         crt.write_bytes(crt_)
         key.write_bytes(key_)
     return crt, key
+
+
+_MIMETYPE = mimetypes.MimeTypes(strict=False)
+_MIMETYPE.readfp(StringIO("""
+application/vsix				vsix
+text/markdown                     md
+"""))
+
+
+def render_as_html(data: bytes, mimetype: str = None):
+    if data is None:
+        return ""
+
+    if mimetype is None or mimetype.startswith("text/"):
+        text = data.decode()
+        if mimetype in ["text/markdown", "text/x-markdown"]:
+            return markdown(text)
+        elif mimetype == "text/html":
+            return text
+        else:
+            return f"<pre>{html.escape(text)}</pre>"
+    else:
+        return ""
+
+
+def render_asset(data: bytes, filename: str):
+    return render_as_html(data, _MIMETYPE.guess_type(filename)[0])
+
+
+def return_asset(
+    data: bytes,
+    filename: str,
+    disposition: Literal["inline", "attachment"] = "inline",
+    mimetype: str = None,
+):
+    if data is None:
+        abort(404)
+
+    headers = {}
+    if filename:
+        headers[
+            "Content-Disposition"
+        ] = f"{disposition}; filename={filename}; filename*=utf-8''{filename}"
+        if not mimetype:
+            mimetype = _MIMETYPE.guess_type(filename)[0]
+
+    return Response(data, mimetype=mimetype, headers=headers)

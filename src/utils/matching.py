@@ -144,7 +144,7 @@ class CriteriaMatcher:
         for f in self.or_filters:
             if f.matcher(ext):
                 return True
-        return False
+        return not self.or_filters
 
 
 def simple_query(

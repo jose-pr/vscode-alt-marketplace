@@ -10,4 +10,5 @@ from .gallery import (
     GalleryExtensionVersion,
     FilterType,
     GalleryExtensionQueryResult,
+    AssetType
 )

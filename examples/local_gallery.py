@@ -7,6 +7,7 @@ import urllib.parse
 from markdown import markdown
 
 from src import Gallery
+from src.components.common import IGallery
 from src.components.sources import LocalGallerySrc
 from src.models.gallery import (
     VSCODE_INSTALLATION_TARGET,
@@ -15,15 +16,14 @@ from src.models.gallery import (
     FilterType,
     GalleryFlags,
 )
-from src.utils.extension import get_version_asset, get_version
-from src.utils.flask import render_asset, return_asset
+from src.utils.extension import get_version_asset, get_version, get_version_asset_uri
+from src.utils.flask import generate_gallery_blueprint, render_asset, return_asset
 from src.utils.matching import simple_query
 from tests.common import debug_run
 
 app = Flask(__name__)
 
 
-gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
 assets_bp = Blueprint("assets", "assets")
 web_bp = Blueprint("web", "web")
 # https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
@@ -36,46 +36,20 @@ gallery = Gallery(
         proxy_url=lambda filepath, type, ext, ver: f"https://127.0.0.1/assets/{urllib.parse.quote_plus(filepath)}",
     )
 )
-src: LocalGallerySrc = gallery.exts_src
 
 
-@gallery_bp.route("/extensions/<extensionId>/<version>/assets/<asset>")
-def get_extension_asset(extensionId: str, version: str | None, asset: str):
-    data, name = src.get_extension_asset(extensionId, version=version, asset=asset)
-    return return_asset(data, filename=name, disposition="attachment")
-
-
-@gallery_bp.route(
-    "/publishers/<publisher>/vsextensions/<extension>/<version>/vspackage"
-)
-def get_publisher_extension(publisher: str, extension: str, version: str):
-    data, name = src.get_extension_asset(
-        f"{publisher}.{extension}", version=version, asset=AssetType.VSIX
-    )
-    return return_asset(data, filename=name, disposition="attachment")
-
-
-@gallery_bp.route("/extensionquery", methods=["POST", "GET"])
-def extension_query():
-    query = (
-        request.json
-        if request.method == "POST"
-        else simple_query(request.args.get("search_text", type=str) or "")
-    )
-    resp = gallery.extension_query(query)
-    return Response(json.dumps(resp), 200)
-
+gallery_bp = generate_gallery_blueprint(gallery)
 
 @assets_bp.route("/<path:path>/<asset>")
 def get_asset(path: str, asset: str):
     vsix = urllib.parse.unquote_plus(path)
-    return return_asset(*src.get_asset(vsix, asset))
+    return return_asset(*gallery.asset_src.get_asset(vsix, asset))
 
 
 @web_bp.route("/items")
 def items():
     itemName = request.args.get("itemName", type=str)
-    ext = src.get_extension(itemName)
+    ext = gallery.exts_src.get_extension(itemName)
 
     if not ext:
         abort(404)
@@ -86,16 +60,15 @@ def items():
     vsix = get_version_asset(ver, AssetType.VSIX)
     tabs: Dict[str, tuple[str, str]] = OrderedDict()
     tabs[AssetType.Details.name] = "Overview", render_asset(
-        *src.get_asset(vsix, AssetType.Details)
+        *gallery.asset_src.get_asset(vsix, AssetType.Details)
     )
     tabs[AssetType.Changelog.name] = "Change Log", render_asset(
-        *src.get_asset(vsix, AssetType.Changelog)
+        *gallery.asset_src.get_asset(vsix, AssetType.Changelog)
     )
 
     return render_template_string(
-        Path("examples\item.jinja").read_text(), tabs=tabs, ext=ext, ver=ver
+        Path("examples/item.html.j2").read_text(), tabs=tabs, ext=ext, ver=ver
     )
-
 
 @web_bp.route("/")
 def landing():
@@ -105,7 +78,7 @@ def landing():
             {"filterType": FilterType.Target, "value": VSCODE_INSTALLATION_TARGET},
             {
                 "filterType": FilterType.ExcludeWithFlags,
-                "value": GalleryFlags.ExcludeNonValidated,
+                "value": GalleryFlags.Unpublished,
             },
         ],
         flags=GalleryFlags.IncludeAssetUri
@@ -114,7 +87,7 @@ def landing():
     )
     resp = gallery.extension_query(query)
     return render_template_string(
-        Path("examples\landing.jinja").read_text(),
+        Path("examples/landing.html.j2").read_text(),
         exts=resp["results"][0]["extensions"],
     )
 
@@ -124,6 +97,6 @@ app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
 app.register_blueprint(web_bp)
 
 
-app.jinja_env.globals.update(get_asset_uri=src.get_version_asset_uri, AssetType=AssetType)
+app.jinja_env.globals.update(get_asset_uri=get_version_asset_uri, AssetType=AssetType)
 
 debug_run(app)

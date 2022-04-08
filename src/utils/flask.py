@@ -1,10 +1,13 @@
 import html
 from io import StringIO
+import json
 import mimetypes
 from typing import List, Literal
-from flask import Response, abort, request
+from flask import Response, abort, request, Blueprint
 from pathlib import Path
 
+from .matching import simple_query
+from ..components import IGallery
 from markdown import markdown
 
 
@@ -79,3 +82,37 @@ def return_asset(
             mimetype = _MIMETYPE.guess_type(filename)[0]
 
     return Response(data, mimetype=mimetype, headers=headers)
+
+def generate_gallery_blueprint(gallery: IGallery):
+    gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
+
+    def get_extension_asset(extensionId: str, version: str | None, asset: str):
+        data, name = gallery.get_extension_asset(
+            extensionId, version=version, asset=asset
+        )
+        return return_asset(data, filename=name, disposition="attachment")
+
+    gallery_bp.route("/extensions/<extensionId>/<version>/assets/<asset>")(
+        get_extension_asset
+    )
+
+    def get_publisher_extension(publisher: str, extension: str, version: str):
+        data, name = gallery.get_publisher_vspackage(publisher, extension, version)
+        return return_asset(data, filename=name, disposition="attachment")
+
+    gallery_bp.route(
+        "/publishers/<publisher>/vsextensions/<extension>/<version>/vspackage"
+    )(get_publisher_extension)
+
+    def extension_query():
+        query = (
+            request.json
+            if request.method == "POST"
+            else simple_query(request.args.get("search_text", type=str) or "")
+        )
+        resp = gallery.extension_query(query)
+        return Response(json.dumps(resp), 200)
+    gallery_bp.route("/extensionquery", methods=["POST", "GET"])(extension_query)
+
+    return gallery_bp
+

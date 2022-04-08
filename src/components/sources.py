@@ -4,12 +4,14 @@ from pathlib import Path
 from src.models.gallery import AssetType
 from src.utils.misc import iter_bytes_read
 
-from .common import IExtensionSrc
+from .common import IAssetSrc, IExtensionSrc
 
 from ..utils.matching import CriteriaMatcher
 from ..utils.extension import (
+    get_asset_from_vsix,
     get_version,
     get_version_asset,
+    get_vsix_manifest,
     sanitize_extension,
     sort_extensions,
 )
@@ -160,7 +162,7 @@ class ProxyExtensionSrc(IExtensionSrc):
                 return ex.value
 
 
-class LocalGallerySrc(IterExtensionSrc):
+class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
     def __init__(
         self,
         path: str,
@@ -201,32 +203,19 @@ class LocalGallerySrc(IterExtensionSrc):
                 return self.get_asset(get_version_asset(ver, AssetType.VSIX), asset)
         return None, None
 
-    @staticmethod
-    def get_version_asset_uri(version: GalleryExtensionVersion, asset: AssetType):        
-        if get_version_asset(version, asset):
-            return version["assetUri"] + "/" + asset.value
-
     def get_asset(self, src: str, asset: "str|AssetType"):
-        import zipfile
-
         vsix = self._path / src
         if src in self.assets and vsix.exists():
-            path = self.assets[src].get(
-                asset if isinstance(asset, str) else asset.value, None
-            )
-            if AssetType(asset) == AssetType.VSIX:
+            if asset == AssetType.VSIX:
                 return iter_bytes_read(vsix), src
-            elif path:
-                with zipfile.ZipFile(vsix, mode="r") as file:
-                    if path in file.namelist():
-                        return file.read(path), Path(path).name
+            else:
+                return get_asset_from_vsix(vsix, asset, assets_map=self.assets[src])
 
         return None, None
 
     def _load(self):
-        import json, zipfile, xmltodict, semver, uuid
+        import json, semver, uuid
         from ..utils.extension import gallery_ext_from_manifest
-        from ..models.vsixmanifest import PackageManifest
 
         ids = (
             json.loads(self._ids_cache.read_text()) if self._ids_cache.exists() else {}
@@ -237,45 +226,42 @@ class LocalGallerySrc(IterExtensionSrc):
 
         for file in self._path.iterdir():
             if file.suffix == ".vsix":
-                with zipfile.ZipFile(file, mode="r") as vsix_file:
-                    manifest: PackageManifest = xmltodict.parse(
-                        vsix_file.read("extension.vsixmanifest").decode()
-                    )["PackageManifest"]
-                    ext = gallery_ext_from_manifest(manifest)
-                    pub = ext["publisher"]["publisherName"]
-                    uid = f'{pub}.{ext["extensionName"]}'
-                    ext["extensionId"] = ids[uid] if uid in ids else str(uuid.uuid4())
-                    ids[uid] = ext["extensionId"]
-                    ext["publisher"]["publisherId"] = (
-                        ids[pub] if pub in ids else str(uuid.uuid4())
-                    )
-                    ext["versions"][0]["assetUri"] = str(file.name)
-                    ext["versions"][0]["fallbackAssetUri"] = str(file.name)
-                    ext["versions"][0]["flags"] += " validated"
-                    ext["flags"] += " validated"
-                    ext["versions"][0]["files"].append(
-                        {"source": file.name, "assetType": AssetType.VSIX.value}
-                    )
-                    self.assets[file.name] = {
-                        f["assetType"]: f["source"] for f in ext["versions"][0]["files"]
-                    }
+                manifest = get_vsix_manifest(file)
+                ext = gallery_ext_from_manifest(manifest)
+                pub = ext["publisher"]["publisherName"]
+                uid = f'{pub}.{ext["extensionName"]}'
+                ext["extensionId"] = ids[uid] if uid in ids else str(uuid.uuid4())
+                ids[uid] = ext["extensionId"]
+                ext["publisher"]["publisherId"] = (
+                    ids[pub] if pub in ids else str(uuid.uuid4())
+                )
+                ext["versions"][0]["assetUri"] = str(file.name)
+                ext["versions"][0]["fallbackAssetUri"] = str(file.name)
+                ext["versions"][0]["flags"] += " validated"
+                ext["flags"] += " validated"
+                ext["versions"][0]["files"].append(
+                    {"source": file.name, "assetType": AssetType.VSIX.value}
+                )
+                self.assets[file.name] = {
+                    f["assetType"]: f["source"] for f in ext["versions"][0]["files"]
+                }
 
-                    ids[pub] = ext["publisher"]["publisherId"]
-                    if uid in self._exts:
-                        _ext = self._exts[uid]
-                        version = semver.Version.parse(ext["versions"][0]["version"])
-                        latest = True
+                ids[pub] = ext["publisher"]["publisherId"]
+                if uid in self._exts:
+                    _ext = self._exts[uid]
+                    version = semver.Version.parse(ext["versions"][0]["version"])
+                    latest = True
 
-                        for v in _ext["versions"]:
-                            _ver = semver.Version.parse(v["version"])
-                            if _ver > version:
-                                latest = False
-                        if latest:
-                            self._exts[uid] = ext
-                            ext["versions"] += _ext["versions"]
-                    else:
+                    for v in _ext["versions"]:
+                        _ver = semver.Version.parse(v["version"])
+                        if _ver > version:
+                            latest = False
+                    if latest:
                         self._exts[uid] = ext
-                        self.uid_map[ext["extensionId"]] = uid
+                        ext["versions"] += _ext["versions"]
+                else:
+                    self._exts[uid] = ext
+                    self.uid_map[ext["extensionId"]] = uid
         self._ids_cache.write_text(json.dumps(ids))
 
     def _sanitize_extension(

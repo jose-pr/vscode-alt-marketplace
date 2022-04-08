@@ -1,15 +1,18 @@
-from typing import List, Generator
+from typing import ClassVar, Iterable, List, Generator
 
-from ..models import (
-    GalleryExtensionQuery,
-    GalleryExtension,
-    GalleryExtensionQueryResultMetadata,
-    GalleryFlags,
-    GalleryCriterium,
-    GalleryQueryResult,
-    SortBy,
-    SortOrder,
-)
+from src.utils.extension import get_version, get_version_asset
+
+from ..models import *
+
+
+class IAssetSrc:
+    def get_asset(self, path: str, asset: "str|AssetType")  -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+        raise NotImplementedError()
+
+    def get_extension_asset(
+        self, extensionId: str, version: str | None, asset: str
+    ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+        raise NotImplementedError()
 
 
 class IExtensionSrc:
@@ -25,10 +28,80 @@ class IExtensionSrc:
     ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
         raise NotImplementedError()
 
+    def get_extension(
+        self,
+        extensionId: str,
+        flags: GalleryFlags = GalleryFlags.IncludeAssetUri
+        | GalleryFlags.IncludeCategoryAndTags
+        | GalleryFlags.IncludeFiles
+        | GalleryFlags.IncludeInstallationTargets
+        | GalleryFlags.IncludeStatistics
+        | GalleryFlags.IncludeVersionProperties
+        | GalleryFlags.IncludeVersions,
+        assetTypes: List[str] = [],
+    ):
+        return next(
+            self.generate_page(
+                [
+                    {
+                        "filterType": FilterType.ExtensionName
+                        if "." in extensionId
+                        else FilterType.ExtensionName,
+                        "value": extensionId,
+                    }
+                ],
+                page=1,
+                pageSize=1,
+                flags=flags,
+                assetTypes=assetTypes,
+            ),
+            None,
+        )
+
 
 class IGallery:
-
-    def extension_query(
-        self, query: GalleryExtensionQuery
-    ) -> GalleryQueryResult:
+    def extension_query(self, query: GalleryExtensionQuery) -> GalleryQueryResult:
         raise NotImplementedError()
+
+    def get_extension_asset(
+        self, extensionId: str, version: str, asset: "AssetType|str"
+    ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+        ext = next(
+            self.extension_query(
+                {
+                    "filters": [
+                        {
+                            "criteria": [
+                                {
+                                    "filterType": FilterType.ExtensionName
+                                    if "." in extensionId
+                                    else FilterType.ExtensionName,
+                                    "value": extensionId,
+                                }
+                            ],
+                            "pageNumber": 1,
+                            "pageSize": 1,
+                            "sortBy": SortBy.NoneOrRelevance,
+                            "sortOrder": SortOrder.Default,
+                        }
+                    ],
+                    "assetTypes": [],
+                    "flags": GalleryFlags.IncludeAssetUri
+                    | GalleryFlags.IncludeFiles
+                    | GalleryFlags.IncludeVersions,
+                }
+            ),
+            None,
+        )
+        if ext:
+            ver = get_version(ext, version)
+            if ver:
+                if get_version_asset(ver, asset):
+                    import requests
+
+                    return requests.get(f'{ver["assetUri"]}/{asset}').content
+
+    def get_publisher_vspackage(self, publisher: str, extension: str, version: str):
+        return self.get_extension_asset(
+            f"{publisher}.{extension}", version=version, asset=AssetType.VSIX
+        )

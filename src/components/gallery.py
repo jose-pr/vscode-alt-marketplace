@@ -11,8 +11,8 @@ class Gallery(IGallery):
     def __init__(self, exts_src: IExtensionSrc, asset_src: IAssetSrc = None) -> None:
         self.exts_src = exts_src
         self.asset_src = asset_src
-        if self.asset_src is None and isinstance(exts_src, IAssetSrc):
-            self.asset_src = self.exts_src
+        if self.asset_src is None:
+            self.asset_src = exts_src if isinstance(exts_src, IAssetSrc) else super()
 
     def extension_query(self, query: GalleryExtensionQuery) -> GalleryQueryResult:
 
@@ -39,10 +39,7 @@ class Gallery(IGallery):
     def get_extension_asset(
         self, extensionId: str, version: "str | None", asset: "AssetType|str"
     ):
-        if self.asset_src:
-            return self.asset_src.get_extension_asset(extensionId, version, asset)
-        else:
-            return super().get_extension_asset(extensionId, version, asset)
+        return self.asset_src.get_extension_asset(extensionId, version, asset)
 
     def get_publisher_vspackage(self, publisher: str, extension: str, version: str):
         return self.get_extension_asset(

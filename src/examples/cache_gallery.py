@@ -1,14 +1,13 @@
 import json
-from flask import Blueprint, Flask, request, Response
+from flask import Blueprint, Flask, Response
 from pathlib import Path
 import urllib.parse
 import requests
 
 
-from src import Gallery, IterExtensionSrc
-from src.components.sources import ProxyExtensionSrc
-from src.utils.matching import simple_query
-from tests.common import debug_run
+from ..components import ProxyExtensionSrc, Gallery, IterExtensionSrc
+from ..utils.flask import debug_run
+from ..blueprints import generate_gallery_blueprint
 
 app = Flask(__name__)
 
@@ -21,24 +20,14 @@ def index():
     return "Web App with Python Flask!"
 
 
-list_gallery = Gallery(
+gallery = Gallery(
     ProxyExtensionSrc(
         IterExtensionSrc(json.loads(Path("private/extensions.json").read_text())),
         lambda uri, type, ext, ver: f"https://127.0.0.1/proxy/{urllib.parse.quote_plus(uri)}",
     )
 )
 
-
-@gallery_bp.route("/extensionquery", methods=["POST", "GET"])
-def extension_query():
-    query = (
-        request.json
-        if request.method == "POST"
-        else simple_query(request.args.get("search_text", type=str) or "")
-    )
-    resp = list_gallery.extension_query(query)
-    return Response(json.dumps(resp), 200)
-
+gallery_bp = generate_gallery_blueprint(gallery)
 
 @proxy_bp.route("/<path:path>")
 def proxy(path: str):
@@ -52,5 +41,3 @@ def proxy(path: str):
 
 app.register_blueprint(proxy_bp, url_prefix="/proxy")
 app.register_blueprint(gallery_bp, url_prefix="/_apis/public/gallery")
-
-debug_run(app)

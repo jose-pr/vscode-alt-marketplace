@@ -166,11 +166,11 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
     def __init__(
         self,
         path: str,
-        proxy_url: Callable[[str, str, GalleryExtension, GalleryExtensionVersion], str],
+        asset_uri: Callable[[str, str, GalleryExtension, GalleryExtensionVersion], str],
         id_cache: str = None,
     ) -> None:
         self._path = Path(path)
-        self._proxy_url = proxy_url
+        self._asset_uri = asset_uri
         self._ids_cache = Path(id_cache) if id_cache else self._path / "ids.json"
         self._load()
 
@@ -270,5 +270,5 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
         ext = super()._sanitize_extension(flags, assetTypes, ext)
         for ver in ext.get("versions", []):
             for uri in ["assetUri", "fallbackAssetUri"]:
-                ver[uri] = self._proxy_url(ver[uri], uri, ext, ver)
+                ver[uri] = self._asset_uri(ver[uri], uri, ext, ver)
         return ext

@@ -1,0 +1,13 @@
+Metadata-Version: 2.1
+Name: vscode-alt-marketplace
+Version: 0.1.0
+Summary: Python methods and classes and some examples to mirror/proxy or create your own visual studio marketplace. Usefull for air gapped or similar networks where there is no access to the internet.
+Home-page: https://github.com/jose-pr/vscode-alt-marketplace
+Author: Jose A.
+Author-email: jose-pr@coqui.dev
+License: UNKNOWN
+Platform: UNKNOWN
+Description-Content-Type: text/markdown
+
+Python methods and classes and some examples to mirror/proxy or create your own visual studio marketplace. Usefull for air gapped or similar networks where there is no access to the internet.
+

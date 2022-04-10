@@ -1,0 +1,31 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build",
+            "type": "shell",
+            "command": "python setup.py bdist_wheel && python setup.py sdist",
+            "problemMatcher": []
+        },
+        {
+            "label": "Install",
+            "type": "shell",
+            "command": "python -m pip install --user --force-reinstall --no-deps (Resolve-Path ${workspaceFolder}/dist/*.whl)",
+            "problemMatcher": []
+        },
+        {
+            "label": "Build and Install",
+            "dependsOn":["Build", "Install"],
+            "dependsOrder": "sequence",
+            "problemMatcher":[]
+        },
+        {
+            "label": "Publish",
+            "type": "shell",
+            "command": "python -m  twine upload -r pypi ./dist/*",
+            "problemMatcher":[]
+        }
+    ]
+}

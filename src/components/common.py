@@ -1,12 +1,22 @@
-from typing import ClassVar, Iterable, List, Generator
+from typing import Iterable, List, Generator
 
 from src.utils.extension import get_version, get_version_asset
 
 from ..models import *
 
 
+class IUpdateServer:
+    def get_vscode_update(platform: str, channel: str, commit: str) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+        raise NotImplementedError()
+
+    def get_remote_ssh_server(commit: str, platform: str, channel: str) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+        raise NotImplementedError()
+
+
 class IAssetSrc:
-    def get_asset(self, path: str, asset: "str|AssetType")  -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+    def get_asset(
+        self, path: str, asset: "str|AssetType"
+    ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
         raise NotImplementedError()
 
     def get_extension_asset(

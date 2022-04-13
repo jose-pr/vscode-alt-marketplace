@@ -138,14 +138,14 @@ class ProxyExtensionSrc(IExtensionSrc):
 
     def generate_page(
         self,
-        criteria: 'list[GalleryCriterium]',
+        criteria: "list[GalleryCriterium]",
         flags: GalleryFlags,
-        assetTypes: 'list[str]',
+        assetTypes: "list[str]",
         page: int = 1,
         pageSize: int = 10,
         sortBy: SortBy = SortBy.NoneOrRelevance,
         sortOrder: SortOrder = SortOrder.Default,
-    ) -> Generator[GalleryExtension, None, 'list[GalleryExtensionQueryResultMetadata]']:
+    ) -> Generator[GalleryExtension, None, "list[GalleryExtensionQueryResultMetadata]"]:
         gen = self.src.generate_page(
             criteria, flags, assetTypes, page, pageSize, sortBy, sortOrder
         )
@@ -161,17 +161,41 @@ class ProxyExtensionSrc(IExtensionSrc):
                 return ex.value
 
 
-class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
-    def __init__(
-        self,
-        path: str,
-        asset_uri: Callable[[str, str, GalleryExtension, GalleryExtensionVersion], str],
-        id_cache: str = None,
-    ) -> None:
-        self._path = Path(path)
-        self._asset_uri = asset_uri
-        self._ids_cache = Path(id_cache) if id_cache else self._path / "ids.json"
-        self._load()
+class CachedGallerySrc(IterExtensionSrc, IAssetSrc):
+    _exts: "dict[str, GalleryExtension]"
+    _uid_map: "dict[str, str]"
+
+    def __init__(self, asset_target: "str|Callable[[], str]" = None) -> None:
+        self._uid_map = {}
+        asset_target = asset_target or None
+        self._asset_target = (
+            (lambda: asset_target) if isinstance(asset_target, str) else asset_target
+        )
+
+    def _get_uid(self, id: "str|GalleryExtension"):
+        if isinstance(id, str):
+            if "." in id:
+                return id
+            else:
+                return self._uid_map.get(id.lower())
+        else:
+            return f'{id["publisher"]["publisherName"]}.{id["extensionName"]}'
+
+    def _load(self) -> Iterable[GalleryExtension]:
+        return []
+
+    def _sanitize_extension(
+        self, flags: GalleryFlags, assetTypes: "list[str]", ext: GalleryExtension
+    ):
+        ext = super()._sanitize_extension(flags, assetTypes, ext)
+        asset_target = self._asset_target() if self._asset_target else "/"
+        if not asset_target.endswith("/"):
+            asset_target += "/"
+        for ver in ext.get("versions", []):
+            ver["assetUri"] = ver["fallbackAssetUri"] = asset_target + self.asset_path(
+                ext["extensionId"], ver["version"]
+            )
+        return ext
 
     def iter(self):
         return self._exts.values()
@@ -186,53 +210,85 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
         | GalleryFlags.IncludeStatistics
         | GalleryFlags.IncludeVersionProperties
         | GalleryFlags.IncludeVersions,
-        assetTypes: 'list[str]' = [],
+        assetTypes: "list[str]" = [],
     ):
-        extuid = self.uid_map.get(extensionId.lower())
-        ext = self._exts[extuid] if extuid else self._exts.get(extensionId, None)
+        extuid = self._get_uid(extensionId)
+        ext = self._exts.get(extuid, None)
         if ext:
-            ext = self._sanitize_extension(flags, assetTypes, ext)
-        return ext
+            return self._sanitize_extension(flags, assetTypes, ext)
 
-    def get_extension_asset(self, extensionId: str, version: 'str | None', asset: str):
-        ext = self.get_extension(extensionId)
-        if ext:
-            ver = get_version(ext, version)
-            if ver:
-                return self.get_asset(get_version_asset(ver, AssetType.VSIX), asset)
+    def asset_path(self, extensionId: str, version: str) -> "str|None":
+        uid = self._get_uid(extensionId)
+        if uid:
+            return f"{uid}/{version}"
+
+    def get_extension_asset(self, extensionId: str, version: "str | None", asset: str):
+        path = self.asset_path(extensionId, version)
+        if path:
+            return self.get_asset(path, asset)
         return None, None
 
-    def get_asset(self, src: str, asset: "str|AssetType"):
-        vsix = self._path / src
-        if src in self.assets and vsix.exists():
-            if asset == AssetType.VSIX:
-                return iter_bytes_read(vsix), src
+    def get_asset(self, src: str, asset: AssetType):
+        return None, None
+
+    def reload(self):
+        import semver
+
+        self._exts: "dict[str, GalleryExtension]" = {}
+        for ext in self._load():
+            uid = self._get_uid(ext)
+
+            if uid in self._exts:
+                _ext = self._exts[uid]
+                version = semver.Version.parse(ext["versions"][0]["version"])
+                latest = True
+                for v in _ext["versions"]:
+                    _ver = semver.Version.parse(v["version"])
+                    if _ver > version:
+                        latest = False
+                if latest:
+                    self._exts[uid] = ext
+                    ext["versions"] += _ext["versions"]
             else:
-                return get_asset_from_vsix(vsix, asset, assets_map=self.assets[src])
+                self._exts[uid] = ext
+                self._uid_map[ext["extensionId"]] = uid
+
+
+class LocalGallerySrc(CachedGallerySrc):
+    def __init__(self, path: str, id_cache: str = None, asset_target=None) -> None:
+        self._path = Path(path)
+        self._ids_cache = Path(id_cache) if id_cache else self._path / "ids.json"
+        super().__init__(asset_target)
+        self.reload()
+
+    def get_asset(self, path: str, asset: "str|AssetType"):
+        assets = self.assets.get(path, None)
+        if assets:
+            vsix = self._path / assets[AssetType.VSIX]
+            if asset == AssetType.VSIX:
+                return iter_bytes_read(vsix), vsix
+            else:
+                return get_asset_from_vsix(vsix, asset, assets_map=assets)
 
         return None, None
 
     def _load(self):
-        import json, semver, uuid
+        import json, uuid
         from ..utils.extension import gallery_ext_from_manifest
 
+        self.assets: "dict[str, dict[AssetType, str]]" = {}
         ids = (
             json.loads(self._ids_cache.read_text()) if self._ids_cache.exists() else {}
         )
-        self._exts: 'dict[str, GalleryExtension]' = {}
-        self.assets: 'dict[str, dict[AssetType, str]]' = {}
-        self.uid_map = {}
 
         for file in self._path.iterdir():
             if file.suffix == ".vsix":
                 manifest = get_vsix_manifest(file)
                 ext = gallery_ext_from_manifest(manifest)
-                pub = ext["publisher"]["publisherName"]
-                uid = f'{pub}.{ext["extensionName"]}'
-                ext["extensionId"] = ids[uid] if uid in ids else str(uuid.uuid4())
-                ids[uid] = ext["extensionId"]
-                ext["publisher"]["publisherId"] = (
-                    ids[pub] if pub in ids else str(uuid.uuid4())
+                uid = self._get_uid(ext)
+                ext["extensionId"] = ids.setdefault(uid, str(uuid.uuid4()))
+                ext["publisher"]["publisherId"] = ids.setdefault(
+                    ext["publisher"]["publisherName"], str(uuid.uuid4())
                 )
                 ext["versions"][0]["assetUri"] = str(file.name)
                 ext["versions"][0]["fallbackAssetUri"] = str(file.name)
@@ -241,33 +297,9 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
                 ext["versions"][0]["files"].append(
                     {"source": file.name, "assetType": AssetType.VSIX.value}
                 )
-                self.assets[file.name] = {
+                self.assets[self.asset_path(uid, ext["versions"][0]["version"])] = {
                     f["assetType"]: f["source"] for f in ext["versions"][0]["files"]
                 }
+                yield ext
 
-                ids[pub] = ext["publisher"]["publisherId"]
-                if uid in self._exts:
-                    _ext = self._exts[uid]
-                    version = semver.Version.parse(ext["versions"][0]["version"])
-                    latest = True
-
-                    for v in _ext["versions"]:
-                        _ver = semver.Version.parse(v["version"])
-                        if _ver > version:
-                            latest = False
-                    if latest:
-                        self._exts[uid] = ext
-                        ext["versions"] += _ext["versions"]
-                else:
-                    self._exts[uid] = ext
-                    self.uid_map[ext["extensionId"]] = uid
         self._ids_cache.write_text(json.dumps(ids))
-
-    def _sanitize_extension(
-        self, flags: GalleryFlags, assetTypes: 'list[str]', ext: GalleryExtension
-    ):
-        ext = super()._sanitize_extension(flags, assetTypes, ext)
-        for ver in ext.get("versions", []):
-            for uri in ["assetUri", "fallbackAssetUri"]:
-                ver[uri] = self._asset_uri(ver[uri], uri, ext, ver)
-        return ext

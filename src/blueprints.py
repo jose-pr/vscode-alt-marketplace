@@ -46,17 +46,11 @@ def generate_gallery_blueprint(gallery: IGallery):
 assets_bp = Blueprint("assets", "assets")
 web_bp = Blueprint("web", "web")
 
-
-def generate_asset_uri(filepath):
-    return f"{request.host_url}/assets/{urllib.parse.quote_plus(filepath)}"
-
-
 def generate_assets_blueprint(src: IAssetSrc):
     assets_bp = Blueprint("assets", "assets")
 
     def get_asset(path: str, asset: str):
-        vsix = urllib.parse.unquote_plus(path)
-        return return_asset(*src.get_asset(vsix, asset))
+        return return_asset(*src.get_asset(path, asset))
 
     assets_bp.route("/<path:path>/<asset>")(get_asset)
     return assets_bp

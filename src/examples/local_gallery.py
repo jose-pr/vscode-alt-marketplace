@@ -14,7 +14,6 @@ from ..utils.flask import render_asset
 from ..utils.matching import simple_query
 
 from ..blueprints import (
-    generate_asset_uri,
     generate_assets_blueprint,
     generate_gallery_blueprint,
 )
@@ -24,22 +23,13 @@ TEMPLATES = Path(__file__).parent.with_name("templates").resolve()
 
 app = Flask(__name__)
 
-# To implement later
-# https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
-
-
-gallery = Gallery(
-    LocalGallerySrc(
-        "private",
-        asset_uri=lambda filepath, type, ext, ver: generate_asset_uri(filepath),
-    )
-)
+gallery = Gallery(LocalGallerySrc("private", asset_target=lambda: request.host_url+"assets/"))
 
 
 gallery_bp = generate_gallery_blueprint(gallery)
 assets_bp = generate_assets_blueprint(gallery.asset_src)
 
-web_bp = Blueprint("web", "web", template_folder=TEMPLATES,  static_folder=STATIC)
+web_bp = Blueprint("web", "web", template_folder=TEMPLATES, static_folder=STATIC)
 
 
 @web_bp.route("/items")
@@ -53,13 +43,13 @@ def items():
     if not ver:
         abort(404)
 
-    vsix = get_version_asset(ver, AssetType.VSIX)
+    path = gallery.asset_src.asset_path(itemName, ver["version"])
     tabs: "dict[str, tuple[str, str]]" = OrderedDict()
     tabs[AssetType.Details.name] = "Overview", render_asset(
-        *gallery.asset_src.get_asset(vsix, AssetType.Details)
+        *gallery.asset_src.get_asset(path, AssetType.Details)
     )
     tabs[AssetType.Changelog.name] = "Change Log", render_asset(
-        *gallery.asset_src.get_asset(vsix, AssetType.Changelog)
+        *gallery.asset_src.get_asset(path, AssetType.Changelog)
     )
 
     return render_template("item.html.j2", tabs=tabs, ext=ext, ver=ver)

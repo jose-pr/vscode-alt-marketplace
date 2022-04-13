@@ -18,6 +18,9 @@ class IUpdateServer:
 
 
 class IAssetSrc:
+    def asset_path(self, extension:str, version:str):
+        raise NotImplementedError()
+
     def get_asset(
         self, path: str, asset: "str|AssetType"
     ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":

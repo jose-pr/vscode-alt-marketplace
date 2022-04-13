@@ -56,6 +56,6 @@ setup(
     version=Path("VERSION").read_text(),
     description="Python methods and classes and some examples to mirror/proxy or create your own visual studio marketplace. Usefull for air gapped or similar networks where there is no access to the internet.",
     package_data={
-        PKG_: [*package_files("examples/templates"), *package_files("examples/static")],
+        '': [*package_files("src/examples/templates"), *package_files("src/examples/static")],
     },
 )

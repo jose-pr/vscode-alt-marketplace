@@ -1,4 +1,4 @@
-from typing import Dict, Iterable, List
+from typing import Iterable
 from pathlib import Path
 from zipfile import ZipFile
 import xmltodict
@@ -17,22 +17,25 @@ from ..models import (
 )
 
 
-def get_statistic(ext: GalleryExtension, name: str, default: float | None = None):
+def get_statistic(ext: GalleryExtension, name: str, default: "float | None" = None):
     return next(
         (s["value"] for s in ext["statistics"] if s["statisticName"] == name), default
     )
 
 
 def get_version_asset(
-    version: GalleryExtensionVersion, name: str | AssetType, default: str | None = None
+    version: GalleryExtensionVersion,
+    name: "str | AssetType",
+    default: str | None = None,
 ):
     return next(
         (s["source"] for s in version["files"] if name == s["assetType"]), default
     )
 
-def get_version_asset_uri(version: GalleryExtensionVersion, asset: AssetType):        
-        if get_version_asset(version, asset):
-            return version["assetUri"] + "/" + asset.value
+
+def get_version_asset_uri(version: GalleryExtensionVersion, asset: AssetType):
+    if get_version_asset(version, asset):
+        return version["assetUri"] + "/" + asset.value
 
 
 def get_assets_from_vsix(vsix: "str|ZipFile"):
@@ -44,7 +47,7 @@ def get_asset_from_vsix(
     vsix: "str|ZipFile",
     asset: "str|AssetType",
     *,
-    assets_map: Dict[AssetType, str] = None
+    assets_map: "dict[AssetType, str]" = None
 ) -> "tuple[bytes,str]|tuple[None, None]":
     if isinstance(vsix, ZipFile):
         if assets_map is None:
@@ -69,7 +72,9 @@ def get_vsix_manifest(vsix: "str|ZipFile") -> PackageManifest:
 
 
 def get_version(
-    ext: GalleryExtension, version: str, default: GalleryExtensionVersion | None = None
+    ext: GalleryExtension,
+    version: str,
+    default: "GalleryExtensionVersion | None" = None,
 ):
     return next(
         (s for s in ext["versions"] if s["version"] == version or version is None),
@@ -77,7 +82,7 @@ def get_version(
     )
 
 
-def sanitize_extension(flags: GalleryFlags, assets: List[str], ext: GalleryExtension):
+def sanitize_extension(flags: GalleryFlags, assets: "list[str]", ext: GalleryExtension):
     versions = []
     _ext: GalleryExtension = {**ext}
     if (

@@ -1,4 +1,0 @@
-flasks
-requests
-markdown
-xmltodict

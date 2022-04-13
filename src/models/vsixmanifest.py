@@ -1,13 +1,16 @@
-from typing import List, TypedDict
+from typing import TypedDict
 
-Identity = TypedDict("Identity", {"@Language": str, "@Version": str, "@Publisher": str, "@Id":str})
+Identity = TypedDict(
+    "Identity", {"@Language": str, "@Version": str, "@Publisher": str, "@Id": str}
+)
 Property = TypedDict("Property", {"@Id": str, "@Value": str})
 
 
 class Properties(TypedDict):
-    Property: List[Property]
+    Property: "list[Property]"
 
-TextNode = TypedDict("TextNode", {"#text":str})
+
+TextNode = TypedDict("TextNode", {"#text": str})
 
 
 class Metadata(TypedDict):
@@ -33,7 +36,7 @@ Asset = TypedDict("Asset", {"@Type": str, "@Path": str, "@Addressable": bool})
 
 
 class Assets(TypedDict):
-    Asset: List[Asset]
+    Asset: "list[Asset]"
 
 
 PackageManifest = TypedDict(
@@ -47,5 +50,6 @@ PackageManifest = TypedDict(
     },
 )
 
+
 class PackageManifestRoot(TypedDict):
-    PackageManifest:PackageManifest
+    PackageManifest: PackageManifest

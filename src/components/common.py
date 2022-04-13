@@ -1,15 +1,19 @@
-from typing import Iterable, List, Generator
+from typing import Iterable, Generator
 
-from src.utils.extension import get_version, get_version_asset
+from ..utils.extension import get_version, get_version_asset
 
 from ..models import *
 
 
 class IUpdateServer:
-    def get_vscode_update(platform: str, channel: str, commit: str) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+    def get_vscode_update(
+        platform: str, channel: str, commit: str
+    ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
         raise NotImplementedError()
 
-    def get_remote_ssh_server(commit: str, platform: str, channel: str) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
+    def get_remote_ssh_server(
+        commit: str, platform: str, channel: str
+    ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
         raise NotImplementedError()
 
 
@@ -20,7 +24,7 @@ class IAssetSrc:
         raise NotImplementedError()
 
     def get_extension_asset(
-        self, extensionId: str, version: str | None, asset: str
+        self, extensionId: str, version: "str | None", asset: str
     ) -> "tuple[bytes|Iterable[bytes]|None, str|None]":
         raise NotImplementedError()
 
@@ -28,14 +32,14 @@ class IAssetSrc:
 class IExtensionSrc:
     def generate_page(
         self,
-        criteria: List[GalleryCriterium],
+        criteria: "list[GalleryCriterium]",
         flags: GalleryFlags,
-        assetTypes: List[str],
+        assetTypes: "list[str]",
         page: int = 1,
         pageSize: int = 10,
         sortBy: SortBy = SortBy.NoneOrRelevance,
         sortOrder: SortOrder = SortOrder.Default,
-    ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
+    ) -> Generator[GalleryExtension, None, "list[GalleryExtensionQueryResultMetadata]"]:
         raise NotImplementedError()
 
     def get_extension(
@@ -48,7 +52,7 @@ class IExtensionSrc:
         | GalleryFlags.IncludeStatistics
         | GalleryFlags.IncludeVersionProperties
         | GalleryFlags.IncludeVersions,
-        assetTypes: List[str] = [],
+        assetTypes: "list[str]" = [],
     ):
         return next(
             self.generate_page(

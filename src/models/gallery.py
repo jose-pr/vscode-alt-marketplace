@@ -1,5 +1,5 @@
 from enum import Enum, IntEnum, IntFlag
-from typing import Optional, TypedDict, List
+from typing import Optional, TypedDict
 from typing_extensions import NotRequired
 
 # https://github.com/microsoft/vscode/blob/main/src/vs/platform/extensionManagement/common/extensionManagement.ts
@@ -38,10 +38,10 @@ class GalleryExtensionVersion(TypedDict):
     lastUpdated: str
     assetUri: str
     fallbackAssetUri: str
-    files: List[GalleryExtensionFile]
-    properties: NotRequired[List[GalleryExtensionProperty]]
+    files: "list[GalleryExtensionFile]"
+    properties: NotRequired["list[GalleryExtensionProperty]"]
     targetPlatform: NotRequired[str]
-    flags:str
+    flags: str
 
 
 class GalleryExtensionStatistics(TypedDict):
@@ -56,9 +56,11 @@ class GalleryExtensionPublisher(TypedDict):
     domain: NotRequired[Optional[str]]
     isDomainVerified: NotRequired[bool]
 
+
 class InstallationTarget(TypedDict):
-    target:str
-    targetVersion:str
+    target: str
+    targetVersion: str
+
 
 class GalleryExtension(TypedDict):
     extensionId: str
@@ -66,15 +68,16 @@ class GalleryExtension(TypedDict):
     displayName: str
     shortDescription: str
     publisher: GalleryExtensionPublisher
-    versions: List[GalleryExtensionVersion]
-    statistics: List[GalleryExtensionStatistics]
-    tags: Optional[List[str]]
+    versions: "list[GalleryExtensionVersion]"
+    statistics: "list[GalleryExtensionStatistics]"
+    tags: Optional["list[str]"]
     releaseDate: str
     publishedDate: str
     lastUpdated: str
-    categories: Optional[List[str]]
+    categories: Optional["list[str]"]
     flags: str
-    installationTargets: List[InstallationTarget]
+    installationTargets: "list[InstallationTarget]"
+
 
 class GalleryExtensionQueryResultMetadataItem(TypedDict):
     name: str
@@ -84,17 +87,17 @@ class GalleryExtensionQueryResultMetadataItem(TypedDict):
 # Inline in source code
 class GalleryExtensionQueryResultMetadata(TypedDict):
     metadataType: str
-    metadataItems: List[GalleryExtensionQueryResultMetadataItem]
+    metadataItems: "list[GalleryExtensionQueryResultMetadataItem]"
 
 
 # Inline in source code
 class GalleryExtensionQueryResult(TypedDict):
-    extensions: List[GalleryExtension]
-    resultMetadata: List[GalleryExtensionQueryResultMetadata]
+    extensions: "list[GalleryExtension]"
+    resultMetadata: "list[GalleryExtensionQueryResultMetadata]"
 
 
 class GalleryQueryResult(TypedDict):
-    results: List[GalleryExtensionQueryResult]
+    results: "list[GalleryExtensionQueryResult]"
 
 
 class GalleryFlags(IntFlag):
@@ -172,6 +175,7 @@ class GalleryCriterium(TypedDict):
     filterType: FilterType
     value: NotRequired[str]
 
+
 VSCODE_INSTALLATION_TARGET = "Microsoft.VisualStudio.Code"
 DefaultPageSize = 10
 
@@ -182,10 +186,10 @@ class GalleryExtensionQueryFilter(TypedDict):
     pagingToken: None
     sortBy: SortBy
     sortOrder: SortOrder
-    criteria: List[GalleryCriterium]
+    criteria: "list[GalleryCriterium]"
 
 
 class GalleryExtensionQuery(TypedDict):
-    assetTypes: List[str]
-    filters: List[GalleryExtensionQueryFilter]
+    assetTypes: "list[str]"
+    filters: "list[GalleryExtensionQueryFilter]"
     flags: GalleryFlags

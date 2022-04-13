@@ -1,7 +1,7 @@
 import json, urllib.parse
 from flask import Blueprint, Response, request
 
-from src.components.common import IUpdateServer
+from .components.common import IUpdateServer
 
 from .utils.matching import simple_query
 from .utils.flask import return_asset

@@ -1,8 +1,7 @@
-from typing import Callable, Dict, Generator, Iterable, List
+from typing import Callable, Generator, Iterable
 from pathlib import Path
 
-from src.models.gallery import AssetType
-from src.utils.misc import iter_bytes_read
+from ..utils.misc import iter_bytes_read
 
 from .common import IAssetSrc, IExtensionSrc
 
@@ -31,15 +30,15 @@ try:
 
         def generate_page(
             self,
-            criteria: List[GalleryCriterium],
+            criteria: "list[GalleryCriterium]",
             flags: GalleryFlags,
-            assetTypes: List[str],
+            assetTypes: "list[str]",
             page: int = 1,
             pageSize: int = 10,
             sortBy: SortBy = SortBy.NoneOrRelevance,
             sortOrder: SortOrder = SortOrder.Default,
         ) -> Generator[
-            GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]
+            GalleryExtension, None, "list[GalleryExtensionQueryResultMetadata]"
         ]:
             resp = self._gallery.extension_query(
                 {
@@ -74,22 +73,22 @@ class IterExtensionSrc(IExtensionSrc):
         return self._exts
 
     def _sanitize_extension(
-        self, flags: GalleryFlags, assetTypes: List[str], ext: GalleryExtension
+        self, flags: GalleryFlags, assetTypes: "list[str]", ext: GalleryExtension
     ):
         return sanitize_extension(flags, assetTypes, ext)
 
     def generate_page(
         self,
-        criteria: List[GalleryCriterium],
+        criteria: "list[GalleryCriterium]",
         flags: GalleryFlags,
-        assetTypes: List[str],
+        assetTypes: "list[str]",
         page: int = 1,
         pageSize: int = 10,
         sortBy: SortBy = SortBy.NoneOrRelevance,
         sortOrder: SortOrder = SortOrder.Default,
         *,
         short_on_qty: bool = False,
-    ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
+    ) -> Generator[GalleryExtension, None, "list[GalleryExtensionQueryResultMetadata]"]:
         matcher: CriteriaMatcher = CriteriaMatcher(criteria)
         matched = 0
         start = ((page or 1) - 1) * pageSize
@@ -139,14 +138,14 @@ class ProxyExtensionSrc(IExtensionSrc):
 
     def generate_page(
         self,
-        criteria: List[GalleryCriterium],
+        criteria: 'list[GalleryCriterium]',
         flags: GalleryFlags,
-        assetTypes: List[str],
+        assetTypes: 'list[str]',
         page: int = 1,
         pageSize: int = 10,
         sortBy: SortBy = SortBy.NoneOrRelevance,
         sortOrder: SortOrder = SortOrder.Default,
-    ) -> Generator[GalleryExtension, None, List[GalleryExtensionQueryResultMetadata]]:
+    ) -> Generator[GalleryExtension, None, 'list[GalleryExtensionQueryResultMetadata]']:
         gen = self.src.generate_page(
             criteria, flags, assetTypes, page, pageSize, sortBy, sortOrder
         )
@@ -187,7 +186,7 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
         | GalleryFlags.IncludeStatistics
         | GalleryFlags.IncludeVersionProperties
         | GalleryFlags.IncludeVersions,
-        assetTypes: List[str] = [],
+        assetTypes: 'list[str]' = [],
     ):
         extuid = self.uid_map.get(extensionId.lower())
         ext = self._exts[extuid] if extuid else self._exts.get(extensionId, None)
@@ -195,7 +194,7 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
             ext = self._sanitize_extension(flags, assetTypes, ext)
         return ext
 
-    def get_extension_asset(self, extensionId: str, version: str | None, asset: str):
+    def get_extension_asset(self, extensionId: str, version: 'str | None', asset: str):
         ext = self.get_extension(extensionId)
         if ext:
             ver = get_version(ext, version)
@@ -220,8 +219,8 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
         ids = (
             json.loads(self._ids_cache.read_text()) if self._ids_cache.exists() else {}
         )
-        self._exts: Dict[str, GalleryExtension] = {}
-        self.assets: Dict[str, Dict[AssetType, str]] = {}
+        self._exts: 'dict[str, GalleryExtension]' = {}
+        self.assets: 'dict[str, dict[AssetType, str]]' = {}
         self.uid_map = {}
 
         for file in self._path.iterdir():
@@ -265,7 +264,7 @@ class LocalGallerySrc(IterExtensionSrc, IAssetSrc):
         self._ids_cache.write_text(json.dumps(ids))
 
     def _sanitize_extension(
-        self, flags: GalleryFlags, assetTypes: List[str], ext: GalleryExtension
+        self, flags: GalleryFlags, assetTypes: 'list[str]', ext: GalleryExtension
     ):
         ext = super()._sanitize_extension(flags, assetTypes, ext)
         for ver in ext.get("versions", []):

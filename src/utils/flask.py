@@ -1,8 +1,8 @@
 import html
 from io import StringIO
 import mimetypes
-from typing import List, Literal
-from flask import Flask, Response, abort, request, Blueprint
+from typing import Literal
+from flask import Flask, Response, abort, request
 from pathlib import Path
 
 from markdown import markdown
@@ -20,7 +20,7 @@ def allow_cors(response: Response):
     return response
 
 
-def load_ssl_context(base_path: str, hostnames: List[str], ips: List[str]):
+def load_ssl_context(base_path: str, hostnames: "list[str]", ips: "list[str]"):
     host = hostnames[0]
     crt = Path(f"{base_path}.crt")
     key = crt.with_suffix(".key")

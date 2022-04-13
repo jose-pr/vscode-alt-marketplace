@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Dict, Literal, OrderedDict
-from flask import Blueprint, Flask, render_template_string, request, abort
+from collections import OrderedDict
+from flask import Blueprint, Flask, render_template, request, abort
 
 from ..components import Gallery, LocalGallerySrc
 from ..models.gallery import (
@@ -10,7 +10,7 @@ from ..models.gallery import (
     GalleryFlags,
 )
 from ..utils.extension import get_version_asset, get_version, get_version_asset_uri
-from ..utils.flask import render_asset, debug_run
+from ..utils.flask import render_asset
 from ..utils.matching import simple_query
 
 from ..blueprints import (
@@ -19,9 +19,10 @@ from ..blueprints import (
     generate_gallery_blueprint,
 )
 
-TEMPLATES = (Path(__file__).parent / "templates").resolve()
+STATIC = Path(__file__).parent.with_name("static").resolve()
+TEMPLATES = Path(__file__).parent.with_name("templates").resolve()
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=STATIC)
 
 # To implement later
 # https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
@@ -38,7 +39,7 @@ gallery = Gallery(
 gallery_bp = generate_gallery_blueprint(gallery)
 assets_bp = generate_assets_blueprint(gallery.asset_src)
 
-web_bp = Blueprint("web", "web")
+web_bp = Blueprint("web", "web", template_folder=TEMPLATES)
 
 
 @web_bp.route("/items")
@@ -53,7 +54,7 @@ def items():
         abort(404)
 
     vsix = get_version_asset(ver, AssetType.VSIX)
-    tabs: Dict[str, tuple[str, str]] = OrderedDict()
+    tabs: "dict[str, tuple[str, str]]" = OrderedDict()
     tabs[AssetType.Details.name] = "Overview", render_asset(
         *gallery.asset_src.get_asset(vsix, AssetType.Details)
     )
@@ -61,9 +62,7 @@ def items():
         *gallery.asset_src.get_asset(vsix, AssetType.Changelog)
     )
 
-    return render_template_string(
-        (TEMPLATES / "item.html.j2").read_text(), tabs=tabs, ext=ext, ver=ver
-    )
+    return render_template("item.html.j2", tabs=tabs, ext=ext, ver=ver)
 
 
 @web_bp.route("/")
@@ -82,8 +81,8 @@ def landing():
         | GalleryFlags.IncludeLatestVersionOnly,
     )
     resp = gallery.extension_query(query)
-    return render_template_string(
-        (TEMPLATES / "landing.html.j2").read_text(),
+    return render_template(
+        "landing.html.j2",
         exts=resp["results"][0]["extensions"],
     )
 

@@ -1,8 +1,12 @@
-from typing import Callable, List, TypeVar
-from ..models.gallery import GalleryExtensionQueryResult, GalleryExtensionQueryResultMetadata
+from typing import Callable, TypeVar
+from ..models.gallery import (
+    GalleryExtensionQueryResult,
+    GalleryExtensionQueryResultMetadata,
+)
 from pathlib import Path
 
-def reduceResultMeta(meta: List[GalleryExtensionQueryResultMetadata]):
+
+def reduceResultMeta(meta: "list[GalleryExtensionQueryResultMetadata]"):
     result = {}
     for group in meta:
         i = result[group["metadataType"]] = {}
@@ -14,7 +18,7 @@ def reduceResultMeta(meta: List[GalleryExtensionQueryResultMetadata]):
 T = TypeVar("T")
 
 
-def diff(a: List[T], b: List[T], key: "str|Callable[[T],object]" = None):
+def diff(a: "list[T]", b: "list[T]", key: "str|Callable[[T],object]" = None):
     bmissing = []
     if key is None:
         key = lambda e: e
@@ -34,14 +38,15 @@ def diff(a: List[T], b: List[T], key: "str|Callable[[T],object]" = None):
             bmissing.append(item)
     return bmissing
 
+
 def diff_query_results(a: GalleryExtensionQueryResult, b: GalleryExtensionQueryResult):
-    key = lambda e: e["extensionId"]   
+    key = lambda e: e["extensionId"]
     missingb = diff(a["extensions"], b["extensions"], key)
     missinga = diff(b["extensions"], a["extensions"], key)
     return missinga, missingb
 
 
-def iter_bytes_read(path:str, chunk_size:int = 1024):
+def iter_bytes_read(path: str, chunk_size: int = 1024):
     with Path(path).open("rb") as file:
         while True:
             data = file.read(chunk_size)

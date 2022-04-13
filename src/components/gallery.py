@@ -1,6 +1,5 @@
 from typing import Callable
 
-from flask import session
 from ..constants import GALLERY_API_ENDPOINT, MARKETPLACE_FQDN
 from ..models import *
 from .common import IAssetSrc, IGallery, IExtensionSrc

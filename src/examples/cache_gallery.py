@@ -6,7 +6,6 @@ import requests
 
 
 from ..components import ProxyExtensionSrc, Gallery, IterExtensionSrc
-from ..utils.flask import debug_run
 from ..blueprints import generate_gallery_blueprint
 
 app = Flask(__name__)

@@ -1,5 +1,5 @@
 import datetime
-from typing import Generator, Generic, Iterator, List, TypeVar
+from typing import Generator, Generic, TypeVar
 
 
 EPOCH = datetime.datetime(1970, 1, 1)
@@ -25,5 +25,5 @@ class _GeneratorWithReturn(Generic[T, R]):
 
 def collect_from_generator(gen: Generator[T, None, R]):
     _gen = _GeneratorWithReturn(gen)
-    yielded:List[T] = list(_gen)
+    yielded: "list[T]" = list(_gen)
     return yielded, _gen.return_value

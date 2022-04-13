@@ -1,5 +1,5 @@
 import re
-from typing import Callable, List, Optional
+from typing import Callable, Optional
 
 from ..models.gallery import (
     VSCODE_INSTALLATION_TARGET,
@@ -20,7 +20,7 @@ def token_regex(token: str):
 
 
 def collect_filter_token(
-    type: FilterType, token: re.Pattern, search: str, criteria: List[GalleryCriterium]
+    type: FilterType, token: re.Pattern, search: str, criteria: "list[GalleryCriterium]"
 ):
     def collect(match: re.Match):
         criteria.append({"filterType": type, "value": match[1]})
@@ -82,7 +82,7 @@ class ExtensionFilter:
                 return True
 
         elif type is FilterType.SearchText:
-            criteria: List[GalleryCriterium] = []
+            criteria: "list[GalleryCriterium]" = []
             value = collect_filter_token(
                 FilterType.Category, CATEGORY_TOKEN, self.value, criteria
             )
@@ -133,7 +133,7 @@ AND_FILTERS = [FilterType.Target, FilterType.Featured, FilterType.ExcludeWithFla
 
 
 class CriteriaMatcher:
-    def __init__(self, criteria: List[GalleryCriterium]) -> None:
+    def __init__(self, criteria: "list[GalleryCriterium]") -> None:
         filters = [ExtensionFilter(c) for c in criteria]
         self.and_filters = [f for f in filters if f.type in AND_FILTERS]
         self.or_filters = [f for f in filters if f.type not in AND_FILTERS]
@@ -149,7 +149,7 @@ class CriteriaMatcher:
 
 
 def simple_query(
-    search: str | List[GalleryCriterium],
+    search: "str | list[GalleryCriterium]",
     page: int = 1,
     pageSize: int = 50,
     sortBy: SortBy = SortBy.NoneOrRelevance,

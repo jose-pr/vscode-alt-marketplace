@@ -22,7 +22,7 @@ from ..blueprints import (
 STATIC = Path(__file__).parent.with_name("static").resolve()
 TEMPLATES = Path(__file__).parent.with_name("templates").resolve()
 
-app = Flask(__name__, static_folder=STATIC)
+app = Flask(__name__)
 
 # To implement later
 # https://update.code.visualstudio.com/commit:${commit_sha}/server-linux-x64/stable
@@ -39,7 +39,7 @@ gallery = Gallery(
 gallery_bp = generate_gallery_blueprint(gallery)
 assets_bp = generate_assets_blueprint(gallery.asset_src)
 
-web_bp = Blueprint("web", "web", template_folder=TEMPLATES)
+web_bp = Blueprint("web", "web", template_folder=TEMPLATES,  static_folder=STATIC)
 
 
 @web_bp.route("/items")

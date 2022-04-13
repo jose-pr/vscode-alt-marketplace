@@ -1,4 +1,4 @@
-flasks
+flask
 requests
 markdown
 xmltodict

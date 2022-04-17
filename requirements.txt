@@ -2,3 +2,4 @@ flask
 requests
 markdown
 xmltodict
+x509creds; extra == 'debug'

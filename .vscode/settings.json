@@ -5,5 +5,8 @@
     ],
     "terminal.integrated.env.windows": {
         "PYTHONPATH": "${workspaceFolder};${env:PYTHONPATH}"
-    }
+    },
+    "files.associations": {
+        "*.html": "jinja-html"
+    },
 }

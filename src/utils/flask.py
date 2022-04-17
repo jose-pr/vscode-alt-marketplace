@@ -20,18 +20,23 @@ def allow_cors(response: Response):
     return response
 
 
-def load_ssl_context(base_path: str, hostnames: "list[str]", ips: "list[str]"):
-    host = hostnames[0]
-    crt = Path(f"{base_path}.crt")
-    key = crt.with_suffix(".key")
+def load_ssl_context(path: str, sans: "list[str]"):
+    host = sans[0]
+    crt = Path(f"{path}.crt")
+    from ssl import create_default_context, SSLContext, PROTOCOL_TLS_SERVER
+    from x509creds import X509Credentials, parse_sans, x509, Encoding
 
-    if not crt.exists() or not key.exists():
-        from ..vendor.cert_gen import generate_selfsigned_cert
+    if not crt.exists():
 
-        crt_, key_ = generate_selfsigned_cert(host, hostnames, ips)
-        crt.write_bytes(crt_)
-        key.write_bytes(key_)
-    return crt, key
+        creds = X509Credentials.create(
+            host, extensions=[x509.SubjectAlternativeName(parse_sans(sans))]
+        )
+        crt.write_bytes(creds.dump(Encoding.PEM))
+
+    context = SSLContext(PROTOCOL_TLS_SERVER)
+   # context.server = T
+    X509Credentials.load(crt).apply_to_sslcontext(context)
+    return context
 
 
 _MIMETYPE = mimetypes.MimeTypes(strict=False)
@@ -89,19 +94,15 @@ def debug_run(
     app: Flask,
     base_path: str = "./private/marketplace.visualstudio.com",
     listen="127.0.0.1",
-    hostnames=["marketplace.visualstudio.com", "vscode-gallery.local"],
+    sans=["marketplace.visualstudio.com", "vscode-gallery.local"],
 ):
     app.after_request(allow_cors)
-    crt, key = load_ssl_context(
+    context = load_ssl_context(
         base_path,
-        hostnames,
-        [listen],
+        [listen, *sans],
     )
     app.run(
         host=listen,
         port=443,
-        ssl_context=(
-            crt,
-            key,
-        ),
+        ssl_context=context,
     )

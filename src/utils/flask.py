@@ -22,8 +22,8 @@ def allow_cors(response: Response):
 
 def load_ssl_context(path: str, sans: "list[str]"):
     host = sans[0]
-    crt = Path(f"{path}.crt")
-    from ssl import create_default_context, SSLContext, PROTOCOL_TLS_SERVER
+    crt = Path(path)
+    from ssl import SSLContext, PROTOCOL_TLS_SERVER
     from x509creds import X509Credentials, parse_sans, x509, Encoding
 
     if not crt.exists():
@@ -92,13 +92,13 @@ def return_asset(
 
 def debug_run(
     app: Flask,
-    base_path: str = "./private/marketplace.visualstudio.com",
+    cert: str = "./private/marketplace.visualstudio.com.crt",
     listen="127.0.0.1",
     sans=["marketplace.visualstudio.com", "vscode-gallery.local"],
 ):
     app.after_request(allow_cors)
     context = load_ssl_context(
-        base_path,
+        cert,
         [listen, *sans],
     )
     app.run(

@@ -1,15 +1,30 @@
+from ast import arg
 from pathlib import Path
-import shutil
+import shutil, sys
 from setuptools import setup as _setup, find_packages
 
-PKG = "vscode-alt-marketplace"
-PKG_ = PKG.replace("-", "_")
 
 root = Path(__file__).parent
+PKG = root.name.replace("-", "_")
+PKG_NAME = PKG.replace("_", "-")
+
+src = root / "src"
+dist = root / "dist"
+dist.mkdir(exist_ok=True, parents=True)
+
+
+def clean_dist():
+    if PKG == "_":
+        for path in (root / "dist").iterdir():
+            shutil.rmtree(path)
+    else:
+        for path in dist.iterdir():
+            path.unlink()
 
 
 def clean():
-    for path in (root / "src").iterdir():
+
+    for path in src.iterdir():
         if path.suffix == ".egg-info":
             shutil.rmtree(path)
     for path in root.iterdir():
@@ -18,27 +33,26 @@ def clean():
     shutil.rmtree(root / "build", ignore_errors=True)
 
 
-pkgs = find_packages("src")
+if sys.argv[1] == "clean-dist":
+    clean_dist()
+    exit()
 
 
-def setup(*args, **kwargs):
-    clean()
-    (root / "dist").mkdir(exist_ok=True)
-    readme = (Path(__file__).parent / "README.md").read_text()
-    _setup(
-        *args,
-        long_description=readme,
-        long_description_content_type="text/markdown",
-        author="Jose A.",
-        author_email="jose-pr@coqui.dev",
-        url=f"https://github.com/jose-pr/{PKG}",
-        package_dir={PKG_: "src"},
-        packages=[PKG_, *[f"{PKG_}.{pkg}" for pkg in pkgs]],
-        install_requires=Path("requirements.txt").read_text().splitlines(),
-        **kwargs,
-    )
-    clean()
+pkgs = find_packages(str(src))
+readme_file = next((f for f in root.iterdir() if f.stem == "README"), None)
+if readme_file:
+    readme = readme_file.read_text()
 
+    if readme_file.suffix == ".rst":
+        readme_type = f"text/x-rst"
+    elif readme_file.suffix == ".md":
+        readme_type = "text/markdown"
+    else:
+        readme_type = "text/plain"
+else:
+    readme = None
+    readme_type = None
+print(readme_type)
 
 import os
 
@@ -51,11 +65,42 @@ def package_files(directory):
     return paths
 
 
-setup(
-    name=PKG,
-    version=Path("VERSION").read_text(),
-    description="Python methods and classes and some examples to mirror/proxy or create your own visual studio marketplace. Usefull for air gapped or similar networks where there is no access to the internet.",
-    package_data={
-        '': [*package_files("src/examples/templates"), *package_files("src/examples/static")],
-    },
-)
+pkgs = find_packages("src")
+
+
+def setup(**kwargs):
+    _setup(
+        name=PKG_NAME,
+        version=(root / "VERSION").read_text(),
+        description=(root / "DESCRIPTION").read_text(),
+        long_description=readme,
+        long_description_content_type=readme_type
+        if readme_type != "text/x-rst"
+        else None,
+        author="Jose A.",
+        author_email="jose-pr@coqui.dev",
+        url=f"https://github.com/jose-pr/{root.resolve().name}",
+        package_dir={PKG: "src"},
+        packages=[PKG, *[(PKG +"."+ pkg) for pkg in pkgs]],
+        install_requires=(root / "requirements.txt").read_text().splitlines(),
+        package_data={
+            "": [
+                *package_files("src/examples/templates"),
+                *package_files("src/examples/static"),
+            ],
+        },
+        **kwargs,
+    )
+
+
+clean()
+if sys.argv[1] == "dist-build":
+    clean_dist()
+    sys.argv[1] = "bdist_wheel"
+    setup()
+    sys.argv[1] = "sdist"
+    setup()
+else:
+    setup()
+
+clean()

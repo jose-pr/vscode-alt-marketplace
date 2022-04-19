@@ -11,7 +11,7 @@ from .components import IGallery, IAssetSrc
 def generate_gallery_blueprint(gallery: IGallery):
     gallery_bp = Blueprint("vscode-marketplace-gallery", "gallery-api")
 
-    def get_extension_asset(extensionId: str, version: str | None, asset: str):
+    def get_extension_asset(extensionId: str, version: 'str | None', asset: str):
         data, name = gallery.get_extension_asset(
             extensionId, version=version, asset=asset
         )

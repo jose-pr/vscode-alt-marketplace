@@ -3,3 +3,4 @@ requests
 markdown
 xmltodict
 x509creds; extra == 'debug'
+semver>=3.0.0-dev

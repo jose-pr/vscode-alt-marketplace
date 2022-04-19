@@ -26,7 +26,7 @@ def get_statistic(ext: GalleryExtension, name: str, default: "float | None" = No
 def get_version_asset(
     version: GalleryExtensionVersion,
     name: "str | AssetType",
-    default: str | None = None,
+    default: "str | None" = None,
 ):
     return next(
         (s["source"] for s in version["files"] if name == s["assetType"]), default

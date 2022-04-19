@@ -257,6 +257,7 @@ class CachedGallerySrc(IterExtensionSrc, IAssetSrc):
 class LocalGallerySrc(CachedGallerySrc):
     def __init__(self, path: str, id_cache: str = None, asset_target=None) -> None:
         self._path = Path(path)
+        self._path.mkdir(exist_ok=True, parents=True)
         self._ids_cache = Path(id_cache) if id_cache else self._path / "ids.json"
         super().__init__(asset_target)
         self.reload()

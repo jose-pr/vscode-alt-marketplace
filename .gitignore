@@ -1,4 +1,4 @@
 /pyenv
-/private
+.private
 **/__pycache__
 /dist/**/*

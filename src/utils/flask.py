@@ -31,6 +31,7 @@ def load_ssl_context(path: str, sans: "list[str]"):
         creds = X509Credentials.create(
             host, extensions=[x509.SubjectAlternativeName(parse_sans(sans))]
         )
+        crt.parent.mkdir(exist_ok=True, parents=True)
         crt.write_bytes(creds.dump(Encoding.PEM))
 
     context = SSLContext(PROTOCOL_TLS_SERVER)
@@ -92,7 +93,7 @@ def return_asset(
 
 def debug_run(
     app: Flask,
-    cert: str = "./private/marketplace.visualstudio.com.crt",
+    cert: str = "./.private/marketplace.visualstudio.com.crt",
     listen="127.0.0.1",
     sans=["marketplace.visualstudio.com", "vscode-gallery.local"],
 ):

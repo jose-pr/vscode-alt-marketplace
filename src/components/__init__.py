@@ -4,5 +4,5 @@ from .sources import IterExtensionSrc, ProxyExtensionSrc, LocalGallerySrc
 try:
     from .gallery import ExternalGallery
     from .sources import MirrorExtensionSrc
-except ModuleNotFoundError:
+except ImportError:
     pass

@@ -9,7 +9,7 @@ from ..models.gallery import (
     FilterType,
     GalleryFlags,
 )
-from ..utils.extension import get_version_asset, get_version, get_version_asset_uri
+from ..utils.extension import get_version, get_version_asset_uri
 from ..utils.flask import render_asset
 from ..utils.matching import simple_query
 
@@ -23,7 +23,7 @@ TEMPLATES = Path(__file__).parent.with_name("templates").resolve()
 
 app = Flask(__name__)
 
-gallery = Gallery(LocalGallerySrc("private", asset_target=lambda: request.host_url+"assets/"))
+gallery = Gallery(LocalGallerySrc(".private", asset_target=lambda: request.host_url+"assets/"))
 
 
 gallery_bp = generate_gallery_blueprint(gallery)

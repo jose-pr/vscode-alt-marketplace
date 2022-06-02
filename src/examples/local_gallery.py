@@ -83,3 +83,6 @@ app.register_blueprint(web_bp)
 
 
 app.jinja_env.globals.update(get_asset_uri=get_version_asset_uri, AssetType=AssetType)
+
+def get_app():
+    return app

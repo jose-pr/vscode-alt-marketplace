@@ -237,21 +237,29 @@ class CachedGallerySrc(IterExtensionSrc, IAssetSrc):
         self._exts: "dict[str, GalleryExtension]" = {}
         for ext in self._load():
             uid = self._get_uid(ext)
+            _ext = self._exts.get(uid, None)
 
-            if uid in self._exts:
-                _ext = self._exts[uid]
-                version = semver.Version.parse(ext["versions"][0]["version"])
-                latest = True
-                for v in _ext["versions"]:
-                    _ver = semver.Version.parse(v["version"])
-                    if _ver > version:
-                        latest = False
-                if latest:
-                    self._exts[uid] = ext
-                    ext["versions"] += _ext["versions"]
+            if _ext:
+                for ver in ext["versions"]:
+                    dup = False
+                    v = ver["version"]
+                    for _ver in _ext["versions"]:
+                        _v = _ver["version"]
+                        if _v == v:
+                            dup = True
+                    if not dup:
+                        _ext["versions"].append(ver)
             else:
                 self._exts[uid] = ext
                 self._uid_map[ext["extensionId"]] = uid
+
+        for ext in self._exts.values():
+            try:
+                ext["versions"].sort(
+                    key=lambda v: semver.Version.parse(v["version"]), reverse=True
+                )
+            except:
+                ext["versions"].sort(key=lambda v: v["version"], reverse=True)
 
 
 class LocalGallerySrc(CachedGallerySrc):
